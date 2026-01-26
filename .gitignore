@@ -1,0 +1,10 @@
+.vs/
+bin/
+obj/
+
+.vscode/
+
+.editorconfig
+
+appsettings.Development.json
+appsettings.json

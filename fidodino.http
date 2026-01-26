@@ -1,0 +1,6 @@
+@fidodino_HostAddress = http://localhost:5041
+
+GET {{fidodino_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

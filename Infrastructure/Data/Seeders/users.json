@@ -1,0 +1,23 @@
+[
+  {
+    "UserId": "b1a7e2c2-1c2b-4e3a-9f2d-123456789abc",
+    "UserName": "admin",
+    "Email": "admin@gmail.com",
+    "Password": "$2a$11$vJVuPHW80zQ9d1RER/qA8eC6XJ1AN9M5Ie7boyuKUVSjAc1Eai9qO",
+    "UserRole": 0
+  },
+  {
+    "UserId": "c2b7e2c2-2d3b-4f3a-8f2d-234567890bcd",
+    "UserName": "staff",
+    "Email": "staff@gmail.com",
+    "Password": "$2a$11$vJVuPHW80zQ9d1RER/qA8eC6XJ1AN9M5Ie7boyuKUVSjAc1Eai9qO",
+    "UserRole": 1
+  },
+  {
+    "UserId": "d3c7e2c2-3e4b-4f3a-7f2d-345678901cde",
+    "UserName": "user",
+    "Email": "user@gmail.com",
+    "Password": "$2a$11$vJVuPHW80zQ9d1RER/qA8eC6XJ1AN9M5Ie7boyuKUVSjAc1Eai9qO",
+    "UserRole": 2
+  }
+]

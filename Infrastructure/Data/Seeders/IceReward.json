@@ -1,0 +1,90 @@
+[
+  {
+    "IceType": "Large",
+    "RequiredShake": 12,
+    "Probability": 0.2,
+    "Rewards": [
+      {
+        "RewardName": "Lon Fido (AW Hammock)",
+        "Score": 777,
+        "Probability": 0.2
+      },
+      { "RewardName": "Chai 7UP thủy tinh", "Score": 390, "Probability": 0.25 },
+      { "RewardName": "Lát Chanh", "Score": 200, "Probability": 0.3 },
+      {
+        "RewardName": "Kính mát",
+        "Score": 0,
+        "EffectType": "DoubleScore",
+        "DurationSeconds": 60,
+        "Probability": 0.05
+      },
+      {
+        "RewardName": "Kính lúp",
+        "Score": 0,
+        "EffectType": "AutoBreakIce",
+        "DurationSeconds": 0,
+        "Probability": 0.05
+      },
+      {
+        "RewardName": "Ván trượt",
+        "Score": 0,
+        "EffectType": "SpeedBoost",
+        "DurationSeconds": 60,
+        "Probability": 0.05
+      },
+      {
+        "RewardName": "Cái võng",
+        "Score": 0,
+        "EffectType": "BlockPlay",
+        "DurationSeconds": 60,
+        "Probability": 0.1
+      }
+    ]
+  },
+  {
+    "IceType": "Medium",
+    "RequiredShake": 7,
+    "Probability": 0.3,
+    "Rewards": [
+      { "RewardName": "Chai 7UP thủy tinh", "Score": 390, "Probability": 0.35 },
+      { "RewardName": "Lát Chanh", "Score": 200, "Probability": 0.45 },
+      {
+        "RewardName": "Kính mát",
+        "Score": 0,
+        "EffectType": "DoubleScore",
+        "DurationSeconds": 60,
+        "Probability": 0.05
+      },
+      {
+        "RewardName": "Kính lúp",
+        "Score": 0,
+        "EffectType": "AutoBreakIce",
+        "DurationSeconds": 0,
+        "Probability": 0.05
+      },
+      {
+        "RewardName": "Cái võng",
+        "Score": 0,
+        "EffectType": "BlockPlay",
+        "DurationSeconds": 60,
+        "Probability": 0.1
+      }
+    ]
+  },
+  {
+    "IceType": "Small",
+    "RequiredShake": 4,
+    "Probability": 0.5,
+    "Rewards": [
+      { "RewardName": "Chai RGB", "Score": 390, "Probability": 0.25 },
+      { "RewardName": "Lát Chanh", "Score": 200, "Probability": 0.65 },
+      {
+        "RewardName": "Kính mát",
+        "Score": 0,
+        "EffectType": "DoubleScore",
+        "DurationSeconds": 60,
+        "Probability": 0.1
+      }
+    ]
+  }
+]
