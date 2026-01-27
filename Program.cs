@@ -31,6 +31,10 @@ using System.Text.Json.Serialization;
 using FidoDino.Domain.Interfaces.System;
 using FidoDino.Persistence.Repositories.System;
 using StackExchange.Redis;
+using FidoDino.Infrastructure.Repositories;
+using Hangfire;
+using Hangfire.PostgreSql;
+using FidoDino.Domain.Enums.Game;
 
 // <summary>
 // Khởi tạo builder cho ứng dụng web ASP.NET Core.
@@ -144,6 +148,7 @@ builder.Services.AddScoped<IStartupService, StartupService>();
 builder.Services.AddScoped<IOAuthService, OAuthService>();
 builder.Services.AddScoped<IItemService, ItemService>();
 builder.Services.AddScoped<ISystemStatusAppService, SystemStatusAppService>();
+builder.Services.AddScoped<ILeaderboardSummaryService, LeaderboardSummaryService>();
 
 //DI Repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -157,6 +162,7 @@ builder.Services.AddScoped<IActiveEffectRepository, ActiveEffectRepository>();
 builder.Services.AddScoped<ISystemStatusRepository, SystemStatusRepository>();
 builder.Services.AddScoped<IIceRewardRepository, IceRewardRepository>();
 builder.Services.AddScoped<IPermissionRepository, PermissionRepository>();
+builder.Services.AddScoped<ILeaderboardSnapshotRepository, LeaderboardSnapshotRepository>();
 
 //DI Email Service
 builder.Services.AddSingleton<IEmailService>(
@@ -216,10 +222,53 @@ builder.Services.AddSwaggerGen(options =>
     options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFilename));
 });
 
+// Hangfire configuration and recurring job registration
+#pragma warning disable CS0618 // Type or member is obsolete
+builder.Services.AddHangfire(x =>
+    x.UsePostgreSqlStorage(builder.Configuration.GetConnectionString("DefaultConnection")));
+#pragma warning restore CS0618 // Type or member is obsolete
+builder.Services.AddHangfireServer();
+
 // <summary>
 // Build ứng dụng web từ cấu hình đã thiết lập.
 // </summary>
 var app = builder.Build();
+
+// Register Hangfire recurring job for leaderboard summary (after app build)
+using (var scope = app.Services.CreateScope())
+{
+    var configValue = builder.Configuration["Leaderboard:DefaultTimeRange"];
+    if (!Enum.TryParse<TimeRangeType>(configValue, true, out var timeRange))
+        timeRange = TimeRangeType.Day;
+
+    var recurringJobManager =
+        scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+
+    switch (timeRange)
+    {
+        case TimeRangeType.Day:
+            recurringJobManager.AddOrUpdate<LeaderboardSummaryService>(
+                "summary-day",
+                s => s.SummarizeAndResetAsync(TimeRangeType.Day, 100),
+                Cron.Daily(23, 59));
+            break;
+
+        case TimeRangeType.Week:
+            recurringJobManager.AddOrUpdate<LeaderboardSummaryService>(
+                "summary-week",
+                s => s.SummarizeAndResetAsync(TimeRangeType.Week, 100),
+                Cron.Weekly(DayOfWeek.Sunday, 23, 59));
+            // Cron.Minutely());
+            break;
+
+        case TimeRangeType.Month:
+            recurringJobManager.AddOrUpdate<LeaderboardSummaryService>(
+                "summary-month",
+                s => s.SummarizeAndResetAsync(TimeRangeType.Month, 100),
+                Cron.Monthly(23, 59));
+            break;
+    }
+}
 
 // <summary>
 // Thiết lập Swagger UI khi chạy ở môi trường Development.
