@@ -6,6 +6,8 @@ using FidoDino.Infrastructure.Data;
 using FidoDino.Application.Interface;
 using FidoDino.Application.DTOs.Game;
 using FidoDino.Common.Exceptions;
+using FidoDino.Domain.Enums.Game;
+using FidoDino.Common;
 
 namespace FidoDino.Application.Services
 {
@@ -14,30 +16,18 @@ namespace FidoDino.Application.Services
         private readonly FidoDinoDbContext _db;
         private readonly IDatabase _redis;
         private readonly IEffectService _effectService;
+        private readonly TimeRangeType _defaultTimeRange;
 
-        public PlayTurnService(FidoDinoDbContext db, IConnectionMultiplexer redis, IEffectService effectService)
+        public PlayTurnService(FidoDinoDbContext db, IConnectionMultiplexer redis, IEffectService effectService, Microsoft.Extensions.Configuration.IConfiguration configuration)
         {
             _db = db;
             _redis = redis.GetDatabase();
             _effectService = effectService;
+            var configValue = configuration["Leaderboard:DefaultTimeRange"] ?? "Day";
+            if (!Enum.TryParse<TimeRangeType>(configValue, true, out var parsed))
+                parsed = TimeRangeType.Day;
+            _defaultTimeRange = parsed;
         }
-
-        /// <summary>
-        /// Tạo key cho bảng xếp hạng dựa trên khoảng thời gian (ngày, tuần, tháng).
-        /// </summary>
-        private string GetLeaderboardKey(object timeRange)
-        {
-            var now = DateTime.UtcNow;
-            var range = timeRange.ToString()!.ToLower();
-            return range switch
-            {
-                "day" => $"leaderboard:day:{now:yyyy-MM-dd}",
-                "week" => $"leaderboard:week:{now:yyyy-ww}",
-                "month" => $"leaderboard:month:{now:yyyy-MM}",
-                _ => $"leaderboard:{range}:{now:yyyy-MM-dd}"
-            };
-        }
-
 
         /// <summary>
         /// Xử lý một lượt chơi của người dùng: random ice, random reward, áp dụng hiệu ứng, cập nhật điểm và leaderboard.
@@ -119,20 +109,22 @@ namespace FidoDino.Application.Services
                 await _db.SaveChangesAsync();
 
                 // Update LeaderboardState
-                var timeRange = LeaderboardTimeRange();
-                var leaderboardState = await _db.LeaderboardStates.FirstOrDefaultAsync(l => l.UserId == userId && l.TimeRange == timeRange);
+                var timeRange = _defaultTimeRange;
+                var now = DateTime.UtcNow;
+                var timeKey = LeaderboardTimeKeyHelper.GetTimeKey(timeRange, now);
+                var leaderboardState = await _db.LeaderboardStates.FirstOrDefaultAsync(l => l.UserId == userId && l.TimeRange == timeRange && l.TimeKey == timeKey);
                 if (leaderboardState == null)
                 {
                     leaderboardState = new LeaderboardState
                     {
                         UserId = userId,
                         TimeRange = timeRange,
-                        TimeKey = DateTime.UtcNow.ToString("yyyy-MM-dd"),
+                        TimeKey = timeKey,
                         TotalScore = earnedScore,
                         PlayCount = 1,
-                        AchievedAt = DateTime.UtcNow,
-                        StableRandom = Guid.NewGuid().ToString(),
-                        UpdatedAt = DateTime.UtcNow
+                        AchievedAt = now,
+                        StableRandom = Math.Abs($"{userId}{(int)timeRange}{timeKey}".GetHashCode()) % 1000,
+                        UpdatedAt = now
                     };
                     _db.LeaderboardStates.Add(leaderboardState);
                 }
@@ -140,7 +132,7 @@ namespace FidoDino.Application.Services
                 {
                     leaderboardState.TotalScore += earnedScore;
                     leaderboardState.PlayCount++;
-                    leaderboardState.UpdatedAt = DateTime.UtcNow;
+                    leaderboardState.UpdatedAt = now;
                 }
                 await _db.SaveChangesAsync();
 
@@ -151,20 +143,20 @@ namespace FidoDino.Application.Services
                     GameSessionId = sessionId,
                     ScoreDelta = earnedScore,
                     TimeRange = timeRange,
-                    CreatedAt = DateTime.UtcNow,
+                    CreatedAt = now,
                     AppliedToRedis = false
                 };
                 _db.ScoreEvents.Add(scoreEvent);
                 await _db.SaveChangesAsync();
 
                 // Update Redis leaderboard
-                string leaderboardKey = GetLeaderboardKey(timeRange);
+                var leaderboardKey = $"leaderboard:{timeRange}:{timeKey}";
                 await _redis.SortedSetIncrementAsync(leaderboardKey, userId.ToString(), earnedScore);
                 scoreEvent.AppliedToRedis = true;
                 await _db.SaveChangesAsync();
 
                 // Xử lý hiệu ứng mới từ reward (nếu có)
-                if (reward.Effect != null && reward.Effect.EffectType != FidoDino.Domain.Enums.Game.EffectType.None)
+                if (reward.Effect != null && reward.Effect.EffectType != EffectType.None)
                 {
                     await _effectService.SetEffectAsync(userId, reward.Effect.EffectType.ToString(), reward.Effect.DurationSeconds);
                 }
@@ -236,15 +228,6 @@ namespace FidoDino.Application.Services
             if (lastReward == null)
                 throw new NotFoundException($"Reward not found for last IceReward: {lastIceReward.RewardId}");
             return lastReward;
-        }
-
-        /// <summary>
-        /// Xác định khoảng thời gian cho bảng xếp hạng (ví dụ: ngày, tuần, tháng).
-        /// </summary>
-        private FidoDino.Domain.Enums.Game.TimeRangeType LeaderboardTimeRange()
-        {
-            // TODO: xác định theo thời gian thực tế
-            return FidoDino.Domain.Enums.Game.TimeRangeType.Day;
         }
     }
 }

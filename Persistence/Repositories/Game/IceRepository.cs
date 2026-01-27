@@ -19,9 +19,10 @@ namespace FidoDino.Persistence.Repositories.Game
         public async Task<Ice?> GetByIdAsync(Guid iceId)
         {
             return await _context.Ices
-                .Include(i => i.IceRewards)
-                    .ThenInclude(ir => ir.Reward)
-                .FirstOrDefaultAsync(i => i.IceId == iceId);
+        .Include(i => i.IceRewards)
+            .ThenInclude(ir => ir.Reward)
+                .ThenInclude(r => r.Effect)
+        .FirstOrDefaultAsync(i => i.IceId == iceId);
         }
         public async Task<IEnumerable<Ice>> GetAllAsync()
         {

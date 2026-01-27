@@ -4,6 +4,7 @@ using FidoDino.Application.Interfaces;
 using FidoDino.Domain.Enums.Game;
 using FidoDino.Common.Exceptions;
 using System.ComponentModel.DataAnnotations;
+using FidoDino.Common;
 
 namespace FidoDino.Application.Services
 {
@@ -17,17 +18,19 @@ namespace FidoDino.Application.Services
         /// <summary>
         /// Lấy trạng thái bảng xếp hạng của người dùng theo khoảng thời gian và key thời gian.
         /// </summary>
-        public async Task<LeaderboardState?> GetUserLeaderboardState(Guid userId, TimeRangeType timeRange, string timeKey)
+        public async Task<LeaderboardState?> GetUserLeaderboardState(Guid userId, TimeRangeType timeRange, DateTime date)
         {
             if (userId == Guid.Empty)
                 throw new ArgumentException("UserId is required");
-            if (string.IsNullOrWhiteSpace(timeKey))
-                throw new ArgumentException("TimeKey is required");
+            if (date == default)
+                throw new ArgumentException("Date is required");
+            var timeKey = LeaderboardTimeKeyHelper.GetTimeKey(timeRange, date);
             var state = await _stateRepo.GetByUserAndTimeAsync(userId, timeRange, timeKey);
             if (state == null)
                 throw new NotFoundException($"Leaderboard state not found for userId: {userId}, timeRange: {timeRange}, timeKey: {timeKey}");
             return state;
         }
+        
         /// <summary>
         /// Thêm mới hoặc cập nhật trạng thái bảng xếp hạng của người dùng.
         /// </summary>

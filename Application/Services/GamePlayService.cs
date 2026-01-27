@@ -5,6 +5,8 @@ using FidoDino.Application.DTOs.Game;
 using FidoDino.Domain.Enums.Game;
 using FidoDino.Common.Exceptions;
 using System.ComponentModel.DataAnnotations;
+using FidoDino.Domain.Entities.Leaderboard;
+using FidoDino.Common;
 
 namespace FidoDino.Application.Services
 {
@@ -16,13 +18,15 @@ namespace FidoDino.Application.Services
         private readonly Infrastructure.Redis.EffectCacheService _effectCache;
         private readonly Domain.Interfaces.Leaderboard.ILeaderboardStateRepository _leaderboardStateRepo;
         private readonly Infrastructure.Data.FidoDinoDbContext _db;
+        private readonly TimeRangeType _defaultTimeRange;
         public GamePlayService(
             IGameSessionRepository sessionRepo,
             IPlayTurnRepository turnRepo,
             IIceRepository iceRepo,
             Infrastructure.Redis.EffectCacheService effectCache,
             Domain.Interfaces.Leaderboard.ILeaderboardStateRepository leaderboardStateRepo,
-            Infrastructure.Data.FidoDinoDbContext db
+            Infrastructure.Data.FidoDinoDbContext db,
+            IConfiguration configuration
         )
         {
             _sessionRepo = sessionRepo;
@@ -31,6 +35,10 @@ namespace FidoDino.Application.Services
             _effectCache = effectCache;
             _leaderboardStateRepo = leaderboardStateRepo;
             _db = db;
+            var configValue = configuration["Leaderboard:DefaultTimeRange"] ?? "Day";
+            if (!Enum.TryParse<TimeRangeType>(configValue, true, out var parsed))
+                parsed = TimeRangeType.Day;
+            _defaultTimeRange = parsed;
         }
 
         /// <summary>
@@ -64,7 +72,7 @@ namespace FidoDino.Application.Services
 
             //Xử lý hiệu ứng Speedboost (Ván trượt)
             if (await _effectCache.HasSpeedBoost(userId))
-            // Giảm 50% số lần lắc cần thiết (làm tròn lên)
+                // Giảm 50% số lần lắc cần thiết (làm tròn lên)
                 shakeCount = (int)Math.Ceiling(shakeCount * 0.5);
 
             return new IceResultDto
@@ -109,7 +117,7 @@ namespace FidoDino.Application.Services
                                 await _effectCache.SetSpeedBoost(reward.RewardId, reward.Effect.DurationSeconds);
                                 break;
                             case EffectType.BlockPlay:
-                                // Nếu có SetPenalty thì dùng, nếu không thì bỏ qua
+                                // Nếu có SetPenalty thì dùng
                                 break;
                         }
                     }
@@ -159,24 +167,24 @@ namespace FidoDino.Application.Services
                 await tx.RollbackAsync();
                 throw new NotFoundException("Session not found");
             }
-            
+
             session.TotalScore += earnedScore;
             await _sessionRepo.UpdateAsync(session);
 
             var now = DateTime.UtcNow;
-            var timeKey = now.ToString("yyyy-MM-dd");
-            var state = await _leaderboardStateRepo.GetByUserAndTimeAsync(session.UserId, TimeRangeType.Day, timeKey);
+            var timeKey = LeaderboardTimeKeyHelper.GetTimeKey(_defaultTimeRange, now);
+            var state = await _leaderboardStateRepo.GetByUserAndTimeAsync(session.UserId, _defaultTimeRange, timeKey);
             if (state == null)
             {
-                state = new Domain.Entities.Leaderboard.LeaderboardState
+                state = new LeaderboardState
                 {
                     UserId = session.UserId,
-                    TimeRange = TimeRangeType.Day,
+                    TimeRange = _defaultTimeRange,
                     TimeKey = timeKey,
                     TotalScore = earnedScore,
                     PlayCount = 1,
                     AchievedAt = now,
-                    StableRandom = "",
+                    StableRandom = Math.Abs($"{session.UserId}{(int)_defaultTimeRange}{timeKey}".GetHashCode()) % 1000,
                     UpdatedAt = now
                 };
             }

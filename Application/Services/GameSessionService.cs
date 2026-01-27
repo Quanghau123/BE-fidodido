@@ -6,6 +6,9 @@ using FidoDino.Application.Interface;
 using FidoDino.Application.DTOs.Game;
 using FidoDino.Common.Exceptions;
 using System.Text.Json;
+using FidoDino.Domain.Enums.Game;
+using FidoDino.Domain.Interfaces.Leaderboard;
+using FidoDino.Common;
 
 namespace FidoDino.Application.Services
 {
@@ -14,17 +17,29 @@ namespace FidoDino.Application.Services
         private readonly IGameSessionRepository _sessionRepository;
         private readonly IDatabase _redis;
         private readonly IEffectService _effectService;
+        private readonly ILeaderboardStateRepository _leaderboardStateRepo;
+        private readonly ILeaderboardRepository _leaderboardRepo;
+        private readonly TimeRangeType _defaultTimeRange;
 
         private const int SESSION_CACHE_HOURS = 2;
 
         public GameSessionService(
             IGameSessionRepository sessionRepository,
             IConnectionMultiplexer redis,
-            IEffectService effectService)
+            IEffectService effectService,
+            ILeaderboardStateRepository leaderboardStateRepo,
+            ILeaderboardRepository leaderboardRepo,
+            IConfiguration configuration)
         {
             _sessionRepository = sessionRepository;
             _redis = redis.GetDatabase();
             _effectService = effectService;
+            _leaderboardStateRepo = leaderboardStateRepo;
+            _leaderboardRepo = leaderboardRepo;
+            var configValue = configuration["Leaderboard:DefaultTimeRange"];
+            if (!Enum.TryParse<TimeRangeType>(configValue, true, out var parsed))
+                parsed = TimeRangeType.Day;
+            _defaultTimeRange = parsed;
         }
 
         /// <summary>
@@ -122,6 +137,44 @@ namespace FidoDino.Application.Services
             session.IsActive = false;
 
             await _sessionRepository.UpdateAsync(session);
+
+            var now = DateTime.UtcNow;
+            // Lấy timeRange từ config hoặc truyền vào constructor/service
+            var timeRange = _defaultTimeRange;
+            string timeKey = LeaderboardTimeKeyHelper.GetTimeKey(timeRange, now);
+
+            var state = await _leaderboardStateRepo.GetByUserAndTimeAsync(
+                session.UserId,
+                timeRange,
+                timeKey
+            );
+
+            if (state != null)
+            {
+                var compositeScore = LeaderboardScoreCalculator.Calculate(state);
+                DateTime date;
+                switch (state.TimeRange)
+                {
+                    case TimeRangeType.Day:
+                        date = DateTime.Parse(state.TimeKey);
+                        break;
+                    case TimeRangeType.Week:
+                        date = LeaderboardTimeKeyHelper.ParseWeekKey(state.TimeKey);
+                        break;
+                    case TimeRangeType.Month:
+                        date = LeaderboardTimeKeyHelper.ParseMonthKey(state.TimeKey);
+                        break;
+                    default:
+                        throw new Exception($"Invalid TimeRange: {state.TimeRange}");
+                }
+                await _leaderboardRepo.UpdateScoreAsync(
+                    state.TimeRange,
+                    date,
+                    session.UserId,
+                    compositeScore,
+                    state.TotalScore
+                );
+            }
 
             // Clear Redis
             await ClearSessionCacheAsync(session.UserId, session.GameSessionId);

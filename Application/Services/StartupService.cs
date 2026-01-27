@@ -1,4 +1,5 @@
 using FidoDino.Application.Interface;
+using FidoDino.Common;
 using FidoDino.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
@@ -17,22 +18,6 @@ namespace FidoDino.Application.Services
         }
 
         /// <summary>
-        /// Tạo key cho bảng xếp hạng dựa trên khoảng thời gian và timeKey.
-        /// </summary>
-        private string GetLeaderboardKey(object timeRange, string? timeKey = null)
-        {
-            var now = DateTime.UtcNow;
-            var range = timeRange.ToString()!.ToLower();
-            return range switch
-            {
-                "day" => $"leaderboard:day:{now:yyyy-MM-dd}",
-                "week" => $"leaderboard:week:{now:yyyy-ww}",
-                "month" => $"leaderboard:month:{now:yyyy-MM}",
-                _ => $"leaderboard:{range}:{now:yyyy-MM-dd}"
-            };
-        }
-
-        /// <summary>
         /// Load dữ liệu nền tảng (người dùng, bảng xếp hạng, phần thưởng, trạng thái hệ thống...) từ database lên Redis.
         /// </summary>
         public async Task LoadPlatformDataToRedisAsync()
@@ -48,7 +33,7 @@ namespace FidoDino.Application.Services
             var leaderboardStates = await _db.LeaderboardStates.AsNoTracking().ToListAsync();
             foreach (var state in leaderboardStates)
             {
-                string key = GetLeaderboardKey(state.TimeRange, state.TimeKey);
+                var key = $"leaderboard:{state.TimeRange}:{state.TimeKey}";
                 await _redis.SortedSetAddAsync(key, state.UserId.ToString(), state.TotalScore);
             }
 
@@ -85,7 +70,8 @@ namespace FidoDino.Application.Services
             var scoreEvents = await _db.ScoreEvents.Where(e => !e.AppliedToRedis).ToListAsync();
             foreach (var evt in scoreEvents)
             {
-                string key = GetLeaderboardKey(evt.TimeRange, evt.CreatedAt.ToString("yyyy-MM-dd"));
+                var timeKey = LeaderboardTimeKeyHelper.GetTimeKey(evt.TimeRange, evt.CreatedAt);
+                var key = $"leaderboard:{evt.TimeRange}:{timeKey}";
                 double score = evt.CompositeDelta ?? evt.ScoreDelta;
                 await _redis.SortedSetIncrementAsync(key, evt.UserId.ToString(), score);
                 evt.AppliedToRedis = true;
