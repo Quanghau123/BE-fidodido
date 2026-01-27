@@ -14,7 +14,7 @@ namespace FidoDino.Domain.Entities.Leaderboard
         public int TotalScore { get; set; }
         public int PlayCount { get; set; }
         public DateTime AchievedAt { get; set; }
-        public string StableRandom { get; set; } = null!;
+        public int StableRandom { get; set; }
         public DateTime UpdatedAt { get; set; }
     }
 }
