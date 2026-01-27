@@ -5,7 +5,7 @@ namespace FidoDino.Application.Interfaces
 {
     public interface ILeaderboardAppService
     {
-        Task<LeaderboardState?> GetUserLeaderboardState(Guid userId, TimeRangeType timeRange, string timeKey);
+        Task<LeaderboardState?> GetUserLeaderboardState(Guid userId, TimeRangeType timeRange, DateTime date);
         Task AddOrUpdateLeaderboardState(LeaderboardState state);
     }
 }

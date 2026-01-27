@@ -1,61 +1,76 @@
-using FidoDino.Domain.Interfaces.Leaderboard;
+using FidoDino.Common;
 using StackExchange.Redis;
+using FidoDino.Domain.Interfaces.Leaderboard;
+using FidoDino.Domain.Enums.Game;
 
-namespace FidoDino.Persistence.Repositories.Leaderboard
+namespace FidoDino.Infrastructure.Repositories
 {
     public class LeaderboardRepository : ILeaderboardRepository
     {
         private readonly IDatabase _redis;
-        public LeaderboardRepository(IConnectionMultiplexer redisConnection)
+
+        public LeaderboardRepository(IConnectionMultiplexer redis)
         {
-            _redis = redisConnection.GetDatabase();
-        }
-        /// <summary>
-        /// Hàm tạo key cho bảng xếp hạng dựa trên khoảng thời gian (ngày, tuần, tháng).
-        /// </summary>
-        private string GetLeaderboardKey(string timeRange)
-        {
-            var now = DateTime.UtcNow;
-            return timeRange.ToLower() switch
-            {
-                "day" => $"leaderboard:day:{now:yyyy-MM-dd}",
-                "week" => $"leaderboard:week:{now:yyyy-ww}",
-                "month" => $"leaderboard:month:{now:yyyy-MM}",
-                _ => $"leaderboard:{timeRange}:{now:yyyy-MM-dd}"
-            };
+            _redis = redis.GetDatabase();
         }
 
-        /// <summary>
-        /// Lấy danh sách top (count) người chơi có điểm cao nhất theo khoảng thời gian.
-        /// </summary>
-        public async Task<IEnumerable<(Guid userId, int score)>> GetTopAsync(string timeRange, int count)
+        private static string BuildKey(TimeRangeType timeRange, DateTime date)
         {
-            var key = GetLeaderboardKey(timeRange);
-            var entries = await _redis.SortedSetRangeByScoreWithScoresAsync(key, order: Order.Descending, take: count);
-            var result = new List<(Guid, int)>();
-            foreach (var entry in entries)
+            var timeKey = LeaderboardTimeKeyHelper.GetTimeKey(timeRange, date);
+            return $"leaderboard:{timeRange}:{timeKey}";
+        }
+
+        public async Task UpdateScoreAsync(
+            TimeRangeType timeRange,
+            DateTime date,
+            Guid userId,
+            long compositeScore,
+            int realScore)
+        {
+            var key = BuildKey(timeRange, date);
+            await _redis.SortedSetAddAsync(key, userId.ToString(), compositeScore);
+            await _redis.HashSetAsync($"{key}:scores", userId.ToString(), realScore);
+        }
+
+        public async Task<IEnumerable<(Guid userId, long compositeScore, int realScore)>> GetTopAsync(TimeRangeType timeRange, DateTime date, int count)
+        {
+            var key = BuildKey(timeRange, date);
+            var entries = await _redis.SortedSetRangeByRankWithScoresAsync(key, 0, count - 1, Order.Descending);
+            var userIds = entries.Select(e => e.Element!.ToString()).ToArray();
+            var realScores = userIds.Length > 0
+                ? (await _redis.HashGetAsync($"{key}:scores", userIds.Select(x => (RedisValue)x).ToArray()))
+                : Array.Empty<RedisValue>();
+            var result = new List<(Guid userId, long compositeScore, int realScore)>();
+            for (int i = 0; i < entries.Length; i++)
             {
-                if (Guid.TryParse(entry.Element, out var userId))
-                    result.Add((userId, (int)entry.Score));
+                var userId = Guid.Parse(entries[i].Element!);
+                var compositeScore = (long)entries[i].Score;
+                int realScore = 0;
+                if (realScores.Length > i && realScores[i].HasValue && int.TryParse(realScores[i], out var parsedScore))
+                    realScore = parsedScore;
+                result.Add((userId, compositeScore, realScore));
             }
             return result;
         }
-        /// <summary>
-        /// Lấy thứ hạng của một người chơi trong bảng xếp hạng theo khoảng thời gian.
-        /// </summary>
-        public async Task<int> GetUserRankAsync(Guid userId, string timeRange)
+
+        public async Task<int?> GetUserRankAsync(
+            TimeRangeType timeRange,
+            DateTime date,
+            Guid userId)
         {
-            var key = GetLeaderboardKey(timeRange);
-            var rank = await _redis.SortedSetRankAsync(key, userId.ToString(), Order.Descending);
-            return rank.HasValue ? (int)rank.Value + 1 : -1;
+            var key = BuildKey(timeRange, date);
+            var rank = await _redis.SortedSetRankAsync(
+                key,
+                userId.ToString(),
+                Order.Descending);
+            return rank.HasValue ? (int?)rank.Value + 1 : null;
         }
-        /// <summary>
-        /// Thêm mới hoặc cập nhật điểm số của người chơi trong bảng xếp hạng theo khoảng thời gian.
-        /// </summary>
-        public async Task AddOrUpdateScoreAsync(Guid userId, int score, string timeRange)
+
+        public async Task ResetAsync(TimeRangeType timeRange, DateTime date)
         {
-            var key = GetLeaderboardKey(timeRange);
-            await _redis.SortedSetAddAsync(key, userId.ToString(), score);
+            var key = BuildKey(timeRange, date);
+            await _redis.KeyDeleteAsync(key);
+            await _redis.KeyDeleteAsync($"{key}:scores");
         }
     }
 }
