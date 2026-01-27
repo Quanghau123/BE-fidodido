@@ -19,5 +19,47 @@
     "Email": "user@gmail.com",
     "Password": "$2a$11$vJVuPHW80zQ9d1RER/qA8eC6XJ1AN9M5Ie7boyuKUVSjAc1Eai9qO",
     "UserRole": 2
+  },
+  {
+    "UserId": "8c9e5b3a-1b7a-4d9f-9b3e-2c6f4a1d8a01",
+    "UserName": "user1",
+    "Email": "user1@gmail.com",
+    "Password": "$2a$11$vJVuPHW80zQ9d1RER/qA8eC6XJ1AN9M5Ie7boyuKUVSjAc1Eai9qO",
+    "UserRole": 2
+  },
+  {
+    "UserId": "b7f2d8e4-6a3c-4c5e-9f1a-3d9e8a7c2b02",
+    "UserName": "user2",
+    "Email": "user2@gmail.com",
+    "Password": "$2a$11$vJVuPHW80zQ9d1RER/qA8eC6XJ1AN9M5Ie7boyuKUVSjAc1Eai9qO",
+    "UserRole": 2
+  },
+  {
+    "UserId": "d1a9e6b4-2f8c-4b3d-8e7a-5c9f1b6d3a03",
+    "UserName": "user3",
+    "Email": "user3@gmail.com",
+    "Password": "$2a$11$vJVuPHW80zQ9d1RER/qA8eC6XJ1AN9M5Ie7boyuKUVSjAc1Eai9qO",
+    "UserRole": 2
+  },
+  {
+    "UserId": "a4c8f1e2-7b9d-4a6e-8d3c-9e2b5f7a1c04",
+    "UserName": "user4",
+    "Email": "user4@gmail.com",
+    "Password": "$2a$11$vJVuPHW80zQ9d1RER/qA8eC6XJ1AN9M5Ie7boyuKUVSjAc1Eai9qO",
+    "UserRole": 2
+  },
+  {
+    "UserId": "f3e9a2b7-6d1c-4e5a-9c8b-7d4f1a6e2b05",
+    "UserName": "user5",
+    "Email": "user5@gmail.com",
+    "Password": "$2a$11$vJVuPHW80zQ9d1RER/qA8eC6XJ1AN9M5Ie7boyuKUVSjAc1Eai9qO",
+    "UserRole": 2
+  },
+  {
+    "UserId": "c6b1f7e9-3a2d-4b8c-9e5a-1d4f2a7e6c06",
+    "UserName": "user6",
+    "Email": "user6@gmail.com",
+    "Password": "$2a$11$vJVuPHW80zQ9d1RER/qA8eC6XJ1AN9M5Ie7boyuKUVSjAc1Eai9qO",
+    "UserRole": 2
   }
 ]
