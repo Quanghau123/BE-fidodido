@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using FidoDino.Application.Services;
-using FidoDino.Application.Interface;
+using FidoDino.Application.Interfaces;
 
 namespace FidoDino.API.Controllers
 {

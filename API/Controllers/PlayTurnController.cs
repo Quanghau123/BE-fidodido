@@ -1,27 +1,48 @@
 using Microsoft.AspNetCore.Mvc;
-using FidoDino.Application.Interfaces;
 using FidoDino.Application.DTOs.Game;
-using FidoDino.Application.Interface;
+using FidoDino.Application.Interfaces;
 
-namespace FidoDino.API.Controllers
+namespace FidoDino.Api.Controllers
 {
     [ApiController]
-    [Route("api/v1/play-turn")]
-    public class PlayTurnController : ControllerBase
+    [Route("api/game")]
+    public class GameController : ControllerBase
     {
         private readonly IPlayTurnService _playTurnService;
-        public PlayTurnController(IPlayTurnService playTurnService)
+
+        public GameController(IPlayTurnService playTurnService)
         {
             _playTurnService = playTurnService;
         }
 
         /// <summary>
-        /// [4.4] Xử lý lượt chơi tổng hợp
+        /// Random Ice + ShakeCount
         /// </summary>
-        [HttpPost("play")]
-        public async Task<ActionResult<PlayTurnResultDto>> PlayTurn([FromQuery] Guid userId, [FromQuery] Guid sessionId)
+        [HttpPost("turn/start")]
+        public async Task<ActionResult<StartTurnResultDto>> StartTurn(
+            [FromBody] PlayTurnRequest request)
         {
-            var result = await _playTurnService.PlayTurnAsync(userId, sessionId);
+            if (request.UserId == Guid.Empty || request.SessionId == Guid.Empty)
+                return BadRequest("Invalid UserId or SessionId");
+
+            var result = await _playTurnService.StartTurnAsync(
+                request.UserId,
+                request.SessionId);
+
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Random Reward + Save DB + Leaderboard
+        /// </summary>
+        [HttpPost("turn/end")]
+        public async Task<ActionResult<PlayTurnResultDto>> EndTurn([FromBody] EndTurnRequest request)
+        {
+            if (request.UserId == Guid.Empty)
+                return BadRequest("Invalid UserId");
+
+            var result = await _playTurnService.EndTurnAsync(request.UserId);
+
             return Ok(result);
         }
     }

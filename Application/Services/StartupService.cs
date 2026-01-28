@@ -1,4 +1,4 @@
-using FidoDino.Application.Interface;
+using FidoDino.Application.Interfaces;
 using FidoDino.Common;
 using FidoDino.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -29,6 +29,13 @@ namespace FidoDino.Application.Services
                 await _redis.HashSetAsync("game:users", user.UserId.ToString(), user.UserName);
             }
 
+            // Load Sessions
+            var sessions = await _db.GameSessions.AsNoTracking().Where(s => s.EndTime == null).ToListAsync();
+            foreach (var session in sessions)
+            {
+                await _redis.StringSetAsync($"game:session:user:{session.UserId}", session.GameSessionId.ToString());
+            }
+
             // Load LeaderboardState
             var leaderboardStates = await _db.LeaderboardStates.AsNoTracking().ToListAsync();
             foreach (var state in leaderboardStates)
@@ -42,14 +49,32 @@ namespace FidoDino.Application.Services
             var ices = await _db.Ices.AsNoTracking().ToListAsync();
             foreach (var ice in ices)
             {
-                await _redis.HashSetAsync("game:ice:all", ice.IceId.ToString(), ice.IceType.ToString());
+                var iceObj = new
+                {
+                    ice.IceId,
+                    ice.IceType,
+                    ice.RequiredShake,
+                    ice.Probability
+                };
+                await _redis.HashSetAsync(
+                    "game:ice:all",
+                    ice.IceId.ToString(),
+                    System.Text.Json.JsonSerializer.Serialize(iceObj)
+                );
             }
 
             // Load IceReward
             var iceRewards = await _db.IceRewards.AsNoTracking().ToListAsync();
             foreach (var ice in ices)
             {
-                var rewards = iceRewards.Where(r => r.IceId == ice.IceId).Select(r => new { r.RewardId, r.Probability });
+                var rewards = iceRewards
+                    .Where(r => r.IceId == ice.IceId)
+                    .Select(r => new
+                    {
+                        r.IceId,
+                        r.RewardId,
+                        r.Probability
+                    });
                 await _redis.StringSetAsync($"game:ice_reward:{ice.IceId}", System.Text.Json.JsonSerializer.Serialize(rewards));
             }
 
@@ -57,7 +82,35 @@ namespace FidoDino.Application.Services
             var rewardsList = await _db.Rewards.AsNoTracking().ToListAsync();
             foreach (var reward in rewardsList)
             {
-                await _redis.HashSetAsync("game:reward:all", reward.RewardId.ToString(), reward.RewardName);
+                var rewardObj = new
+                {
+                    reward.RewardId,
+                    reward.EffectId,
+                    reward.RewardName,
+                    reward.Score
+                };
+                await _redis.HashSetAsync(
+                    "game:reward:all",
+                    reward.RewardId.ToString(),
+                    System.Text.Json.JsonSerializer.Serialize(rewardObj)
+                );
+            }
+
+            // Load Effect
+            var effects = await _db.Effects.AsNoTracking().ToListAsync();
+            foreach (var effect in effects)
+            {
+                var effectObj = new
+                {
+                    effect.EffectId,
+                    effect.EffectType,
+                    effect.DurationSeconds
+                };
+                await _redis.HashSetAsync(
+                    "game:effect:all",
+                    effect.EffectId.ToString(),
+                    System.Text.Json.JsonSerializer.Serialize(effectObj)
+                );
             }
 
             // Load SystemStatus

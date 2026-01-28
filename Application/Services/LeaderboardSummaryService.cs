@@ -30,7 +30,7 @@ namespace FidoDino.Application.Services
 
         public async Task SummarizeAndResetAsync(TimeRangeType timeRange, int topN)
         {
-            var now = DateTime.UtcNow;
+            var now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
             var timeKey = LeaderboardTimeKeyHelper.GetTimeKey(timeRange, now);
 
             var topUsers = (await _leaderboardRepository
@@ -49,7 +49,7 @@ namespace FidoDino.Application.Services
                     UserId = userId,
                     Rank = i + 1,
                     TotalScore = realScore,
-                    CreatedAt = now
+                    CreatedAt = DateTime.UtcNow
                 };
 
                 await _snapshotRepository.AddAsync(snapshot);

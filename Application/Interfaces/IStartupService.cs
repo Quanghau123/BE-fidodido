@@ -1,4 +1,4 @@
-namespace FidoDino.Application.Interface
+namespace FidoDino.Application.Interfaces
 {
     public interface IStartupService
     {

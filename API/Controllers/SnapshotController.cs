@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using FidoDino.Application.Interface;
+using FidoDino.Application.Interfaces;
 using System;
 using System.Threading.Tasks;
 using FidoDino.Domain.Enums.Game;

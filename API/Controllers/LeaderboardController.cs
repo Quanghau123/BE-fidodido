@@ -24,30 +24,13 @@ namespace FidoDino.API.Controllers
         [HttpGet("user-state")]
         public async Task<IActionResult> GetUserLeaderboardState(Guid userId, TimeRangeType timeRange, DateTime? date = null)
         {
-            var targetDate = date ?? DateTime.UtcNow;
+            var now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+            var targetDate = date ?? now;
 
             var state = await _leaderboardAppService
                 .GetUserLeaderboardState(userId, timeRange, targetDate);
 
             return Ok(state);
-        }
-
-        /// <summary>
-        /// Lấy top user theo điểm số.
-        /// </summary>
-        [HttpGet("top")]
-        public async Task<IActionResult> GetTop([FromQuery] string timeRange, [FromQuery] int count)
-        {
-            var dateStr = Request.Query["date"].ToString();
-            DateTime date;
-            if (string.IsNullOrWhiteSpace(dateStr))
-                date = DateTime.Today;
-            else if (!DateTime.TryParse(dateStr, out date))
-                return BadRequest("Invalid date (yyyy-MM-dd)");
-            if (!Enum.TryParse<TimeRangeType>(timeRange, true, out var timeRangeEnum))
-                return BadRequest("Invalid timeRange. Use: Day, Week, Month");
-            var result = await _leaderboardService.GetTopAsync(timeRangeEnum, date, count);
-            return Ok(result);
         }
 
         /// <summary>

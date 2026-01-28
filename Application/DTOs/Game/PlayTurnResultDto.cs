@@ -9,7 +9,9 @@ namespace FidoDino.Application.DTOs.Game
         public Guid RewardId { get; set; }
         public string RewardName { get; set; } = string.Empty;
         public int EarnedScore { get; set; }
-        public string EffectInfo { get; set; } = string.Empty;
+        public string? EffectInfo { get; set; } = string.Empty;
         public int EffectDuration { get; set; }
+        public string EffectType { get; set; } = string.Empty;
+        public int DurationSeconds { get; set; }
     }
 }

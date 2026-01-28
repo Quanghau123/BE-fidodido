@@ -26,7 +26,6 @@ using FluentValidation;
 using FidoDino.Application.Validation.User;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
-using FidoDino.Application.Interface;
 using System.Text.Json.Serialization;
 using FidoDino.Domain.Interfaces.System;
 using FidoDino.Persistence.Repositories.System;
@@ -35,6 +34,7 @@ using FidoDino.Infrastructure.Repositories;
 using Hangfire;
 using Hangfire.PostgreSql;
 using FidoDino.Domain.Enums.Game;
+using FidoDino.Domain.Entities.Game;
 
 // <summary>
 // Khởi tạo builder cho ứng dụng web ASP.NET Core.
@@ -51,12 +51,13 @@ var smtpPass = smtpSection["Pass"];
 //Add CORS
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    options.AddPolicy("AllowFrontend", policy =>
     {
         policy
-            .AllowAnyOrigin()
+            .WithOrigins("http://localhost:5173") // FE domain
             .AllowAnyHeader()
-            .AllowAnyMethod();
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
 
@@ -104,6 +105,12 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
     ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("Redis")!));
 builder.Services.AddScoped<IDatabase>(sp =>
     sp.GetRequiredService<IConnectionMultiplexer>().GetDatabase());
+
+// SignalR
+builder.Services.AddSignalR();
+
+// BackgroundService cập nhật BXH
+builder.Services.AddHostedService<FidoDino.API.BackgroundServices.LeaderboardUpdateService>();
 
 //Controllers & Validation
 builder.Services.AddControllers()
@@ -180,6 +187,9 @@ builder.Services.AddScoped<IOAuthService, OAuthService>();
 
 // EffectCacheService DI
 builder.Services.AddScoped<EffectCacheService>();
+builder.Services.AddScoped<IceCacheService>();
+builder.Services.AddScoped<IceRewardCacheService>();
+builder.Services.AddScoped<RewardCacheService>();
 
 // FidoDinoDbContext DI
 builder.Services.AddScoped<FidoDinoDbContext>();
@@ -233,6 +243,8 @@ builder.Services.AddHangfireServer();
 // Build ứng dụng web từ cấu hình đã thiết lập.
 // </summary>
 var app = builder.Build();
+// Map SignalR Hub endpoint
+app.MapHub<FidoDino.API.Hubs.LeaderboardHub>("/leaderboardHub");
 
 // Register Hangfire recurring job for leaderboard summary (after app build)
 using (var scope = app.Services.CreateScope())
@@ -304,7 +316,7 @@ using (var scope = app.Services.CreateScope())
 // <summary>
 // Thiết lập các middleware và chạy ứng dụng web.
 // </summary>
-app.UseCors("AllowAll");
+app.UseCors("AllowFrontend");
 app.UseMiddleware<ErrorHandlingMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();

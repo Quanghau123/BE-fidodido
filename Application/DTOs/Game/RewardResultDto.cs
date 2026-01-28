@@ -1,3 +1,5 @@
+using FidoDino.Domain.Enums.Game;
+
 namespace FidoDino.Application.DTOs.Game
 {
     public class RewardResultDto
@@ -5,6 +7,6 @@ namespace FidoDino.Application.DTOs.Game
         public Guid RewardId { get; set; }
         public string RewardName { get; set; } = string.Empty;
         public int Score { get; set; }
-        public string? EffectType { get; set; }
+        public EffectType EffectType { get; set; }
     }
 }

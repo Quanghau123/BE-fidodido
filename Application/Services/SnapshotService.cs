@@ -1,4 +1,4 @@
-using FidoDino.Application.Interface;
+using FidoDino.Application.Interfaces;
 using FidoDino.Common.Exceptions;
 using FidoDino.Domain.Entities.Game;
 using FidoDino.Domain.Entities.Leaderboard;
@@ -27,6 +27,7 @@ namespace FidoDino.Application.Services
             var session = await _db.GameSessions.Include(s => s.PlayTurns).FirstOrDefaultAsync(s => s.GameSessionId == sessionId);
             if (session == null)
                 throw new NotFoundException($"Game session not found: {sessionId}");
+            var now = DateTime.UtcNow;
             var snapshot = new GameSessionSnapshot
             {
                 GameSessionSnapshotId = Guid.NewGuid(),
@@ -34,7 +35,7 @@ namespace FidoDino.Application.Services
                 UserId = session.UserId,
                 TotalScore = session.TotalScore,
                 LastPlayedAt = session.PlayTurns.OrderByDescending(t => t.PlayedAt).FirstOrDefault()?.PlayedAt,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = now
             };
             _db.Set<GameSessionSnapshot>().Add(snapshot);
             await _db.SaveChangesAsync();
@@ -54,6 +55,7 @@ namespace FidoDino.Application.Services
             if (states == null || !states.Any())
                 throw new NotFoundException($"No leaderboard states found for {timeRange} - {timeKey}");
             int rank = 1;
+            var now = DateTime.UtcNow;
             foreach (var state in states)
             {
                 var snapshot = new LeaderboardSnapshot
@@ -64,7 +66,7 @@ namespace FidoDino.Application.Services
                     UserId = state.UserId,
                     Rank = rank++,
                     TotalScore = state.TotalScore,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = now
                 };
                 _db.LeaderboardSnapshots.Add(snapshot);
             }

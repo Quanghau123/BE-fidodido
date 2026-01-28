@@ -1,10 +1,7 @@
 using FidoDino.Application.DTOs.Game;
 using FidoDino.Domain.Entities.Game;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
-namespace FidoDino.Application.Interface
+namespace FidoDino.Application.Interfaces
 {
     public interface IItemService
     {

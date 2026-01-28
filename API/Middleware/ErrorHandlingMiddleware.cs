@@ -52,10 +52,12 @@ namespace FidoDino.API.Middleware
                 context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
                 await context.Response.WriteAsJsonAsync(new ApiResponse<object>(false, ex.Message));
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                // Log lỗi chi tiết ra console để dễ debug
+                Console.WriteLine($"[ErrorHandlingMiddleware] {ex}");
                 context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
-                await context.Response.WriteAsJsonAsync(new ApiResponse<object>(false, "Internal server error"));
+                await context.Response.WriteAsJsonAsync(new ApiResponse<object>(false, ex.Message)); // Có thể đổi lại "Internal server error" khi lên production
             }
         }
     }

@@ -2,7 +2,7 @@
 using FidoDino.Common.Exceptions;
 using FidoDino.Domain.Entities.Game;
 using FidoDino.Domain.Interfaces.Game;
-using FidoDino.Application.Interface;
+using FidoDino.Application.Interfaces;
 using FidoDino.Application.DTOs.Game;
 
 namespace FidoDino.Application.Services

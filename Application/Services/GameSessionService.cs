@@ -2,7 +2,6 @@ using FidoDino.Domain.Entities.Game;
 using FidoDino.Domain.Interfaces.Game;
 using FidoDino.Application.Interfaces;
 using StackExchange.Redis;
-using FidoDino.Application.Interface;
 using FidoDino.Application.DTOs.Game;
 using FidoDino.Common.Exceptions;
 using System.Text.Json;
@@ -87,12 +86,14 @@ namespace FidoDino.Application.Services
             if (userId == Guid.Empty)
                 throw new ArgumentException("UserId is required");
 
-            if (await _effectService.HasEffectAsync(userId, "BlockPlay"))
+            if (await _effectService.HasEffectAsync(userId, EffectType.BlockPlay))
                 throw new ForbiddenException("User is currently blocked from starting a session.");
 
             var activeSession = await _sessionRepository.GetActiveSessionByUserIdAsync(userId);
             if (activeSession != null)
                 throw new ConflictException("User already has an active session.");
+
+            var now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
 
             var session = new GameSession
             {
@@ -102,7 +103,7 @@ namespace FidoDino.Application.Services
                 IsActive = true,
                 StartTime = DateTime.UtcNow,
                 TimeRange = _defaultTimeRange,
-                TimeKey = LeaderboardTimeKeyHelper.GetTimeKey(_defaultTimeRange, DateTime.UtcNow)
+                TimeKey = LeaderboardTimeKeyHelper.GetTimeKey(_defaultTimeRange, now)
             };
 
             await _sessionRepository.AddAsync(session);
@@ -135,13 +136,12 @@ namespace FidoDino.Application.Services
             if (session.EndTime != null)
                 return;
 
+            var now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
             session.EndTime = DateTime.UtcNow;
             session.IsActive = false;
 
             await _sessionRepository.UpdateAsync(session);
 
-            var now = DateTime.UtcNow;
-            // Lấy timeRange từ config hoặc truyền vào constructor/service
             var timeRange = _defaultTimeRange;
             string timeKey = LeaderboardTimeKeyHelper.GetTimeKey(timeRange, now);
 

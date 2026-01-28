@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using FidoDino.Application.Interface;
+using FidoDino.Application.Interfaces;
 using FidoDino.Domain.Entities.Game;
 using FidoDino.Common;
 using System;

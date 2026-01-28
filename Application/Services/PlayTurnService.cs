@@ -1,13 +1,15 @@
 using FidoDino.Domain.Entities.Game;
 using FidoDino.Domain.Entities.Leaderboard;
-using StackExchange.Redis;
-using Microsoft.EntityFrameworkCore;
-using FidoDino.Infrastructure.Data;
-using FidoDino.Application.Interface;
-using FidoDino.Application.DTOs.Game;
-using FidoDino.Common.Exceptions;
 using FidoDino.Domain.Enums.Game;
 using FidoDino.Common;
+using FidoDino.Common.Exceptions;
+using FidoDino.Infrastructure.Data;
+using StackExchange.Redis;
+using Microsoft.EntityFrameworkCore;
+using FidoDino.Application.Interfaces;
+using FidoDino.Application.DTOs.Game;
+using FidoDino.Infrastructure.Redis;
+using System.Text.Json;
 
 namespace FidoDino.Application.Services
 {
@@ -15,221 +17,192 @@ namespace FidoDino.Application.Services
     {
         private readonly FidoDinoDbContext _db;
         private readonly IDatabase _redis;
+        private readonly IGamePlayService _gamePlayService;
         private readonly IEffectService _effectService;
         private readonly TimeRangeType _defaultTimeRange;
 
-        public PlayTurnService(FidoDinoDbContext db, IConnectionMultiplexer redis, IEffectService effectService, Microsoft.Extensions.Configuration.IConfiguration configuration)
+        public PlayTurnService(
+            FidoDinoDbContext db,
+            IConnectionMultiplexer redis,
+            IGamePlayService gamePlayService,
+            IEffectService effectService,
+            IConfiguration config)
         {
             _db = db;
             _redis = redis.GetDatabase();
+            _gamePlayService = gamePlayService;
             _effectService = effectService;
-            var configValue = configuration["Leaderboard:DefaultTimeRange"] ?? "Day";
-            if (!Enum.TryParse<TimeRangeType>(configValue, true, out var parsed))
-                parsed = TimeRangeType.Day;
-            _defaultTimeRange = parsed;
+
+            Enum.TryParse(config["Leaderboard:DefaultTimeRange"], true, out _defaultTimeRange);
+            if (_defaultTimeRange == 0)
+                _defaultTimeRange = TimeRangeType.Day;
         }
 
-        /// <summary>
-        /// Xử lý một lượt chơi của người dùng: random ice, random reward, áp dụng hiệu ứng, cập nhật điểm và leaderboard.
-        /// </summary>
-        public async Task<PlayTurnResultDto> PlayTurnAsync(Guid userId, Guid sessionId)
+        public async Task<StartTurnResultDto> StartTurnAsync(Guid userId, Guid sessionId)
         {
-            // Lock Redis để đảm bảo 1 user chỉ chơi 1 lượt tại 1 thời điểm
-            if (userId == Guid.Empty)
-                throw new ArgumentException("UserId is required");
-            if (sessionId == Guid.Empty)
-                throw new ArgumentException("SessionId is required");
             var lockKey = $"game:lock:{userId}";
-            var lockAcquired = await _redis.StringSetAsync(lockKey, "1", TimeSpan.FromSeconds(5), when: When.NotExists);
-            if (!lockAcquired)
-                throw new ConflictException("User is already playing a turn.");
+            if (!await _redis.StringSetAsync(lockKey, "1", TimeSpan.FromSeconds(5), When.NotExists))
+                throw new ConflictException("User is already playing");
 
             try
             {
-                // Check system status
-                var status = await _redis.StringGetAsync("game:system_status");
-                if (status != "Active")
-                    throw new ForbiddenException("System is not active.");
+                if (await _redis.StringGetAsync("game:system_status") != "Active")
+                    throw new ForbiddenException("System inactive");
 
-                // Check session
-                var session = await _db.GameSessions.Include(s => s.PlayTurns).FirstOrDefaultAsync(s => s.GameSessionId == sessionId && s.UserId == userId && s.EndTime == null);
-                if (session == null)
-                    throw new NotFoundException("No active session.");
+                var cachedSessionId = await _redis.StringGetAsync($"game:session:user:{userId}");
+                if (!cachedSessionId.HasValue || cachedSessionId != sessionId.ToString())
+                    throw new NotFoundException("No active session");
 
-                // Check penalty effect (BlockPlay)
-                if (await _effectService.HasEffectAsync(userId, "BlockPlay"))
-                    throw new ForbiddenException("User is currently blocked from playing.");
+                if (await _effectService.HasEffectAsync(userId, EffectType.BlockPlay))
+                    throw new ForbiddenException("User is blocked");
 
-                // Random Ice theo xác suất
-                var iceList = await _db.Ices.ToListAsync();
-                var ice = RandomIceByProbability(iceList);
+                var (ice, shakeCount) = await _gamePlayService.StartTurnAsync(userId);
 
-                // Xử lý hiệu ứng Utility (AutoBreakIce)
-                int shakeCount = ice.RequiredShake;
-                if (await _effectService.HasEffectAsync(userId, "Utility"))
+                var turnCache = new TurnCacheDto
                 {
-                    shakeCount = 0;
-                    // Giảm số lượt utility còn lại
-                    var remain = await _effectService.GetEffectDurationAsync(userId, "Utility");
-                    if (remain > 1)
-                        await _effectService.SetEffectAsync(userId, "Utility", remain - 1);
-                    else
-                        await _effectService.RemoveEffectAsync(userId, "Utility");
-                }
-
-                // Xử lý hiệu ứng SpeedBoost
-                if (await _effectService.HasEffectAsync(userId, "SpeedBoost"))
-                {
-                    shakeCount = (int)(shakeCount * 0.7); // ví dụ giảm 30%
-                }
-
-                // Random Reward theo xác suất
-                var iceRewards = await _db.IceRewards.Where(r => r.IceId == ice.IceId).ToListAsync();
-                var reward = RandomRewardByProbability(iceRewards, await _db.Rewards.ToListAsync());
-
-                // Xử lý hiệu ứng DoubleScore
-                int earnedScore = reward.Score;
-                if (await _effectService.HasEffectAsync(userId, "DoubleScore"))
-                {
-                    earnedScore *= 2;
-                }
-
-                // Create PlayTurn
-                var playTurn = new PlayTurn
-                {
-                    GameSessionId = sessionId,
+                    SessionId = sessionId,
                     IceId = ice.IceId,
-                    RewardId = reward.RewardId,
                     ShakeCount = shakeCount,
-                    EarnedScore = earnedScore,
-                    PlayedAt = DateTime.UtcNow,
-                    TimeRange = _defaultTimeRange,
-                    TimeKey = LeaderboardTimeKeyHelper.GetTimeKey(_defaultTimeRange, DateTime.UtcNow)
+                    StartedAt = DateTime.UtcNow
                 };
-                _db.PlayTurns.Add(playTurn);
-                session.TotalScore += earnedScore;
-                await _db.SaveChangesAsync();
 
-                // Update LeaderboardState
-                var timeRange = _defaultTimeRange;
-                var now = DateTime.UtcNow;
-                var timeKey = LeaderboardTimeKeyHelper.GetTimeKey(timeRange, now);
-                var leaderboardState = await _db.LeaderboardStates.FirstOrDefaultAsync(l => l.UserId == userId && l.TimeRange == timeRange && l.TimeKey == timeKey);
-                if (leaderboardState == null)
-                {
-                    leaderboardState = new LeaderboardState
-                    {
-                        UserId = userId,
-                        TimeRange = timeRange,
-                        TimeKey = timeKey,
-                        TotalScore = earnedScore,
-                        PlayCount = 1,
-                        AchievedAt = now,
-                        StableRandom = Math.Abs($"{userId}{(int)timeRange}{timeKey}".GetHashCode()) % 1000,
-                        UpdatedAt = now
-                    };
-                    _db.LeaderboardStates.Add(leaderboardState);
-                }
-                else
-                {
-                    leaderboardState.TotalScore += earnedScore;
-                    leaderboardState.PlayCount++;
-                    leaderboardState.UpdatedAt = now;
-                }
-                await _db.SaveChangesAsync();
+                await _redis.StringSetAsync(
+                    $"game:turn:active:{userId}",
+                    JsonSerializer.Serialize(turnCache),
+                    TimeSpan.FromSeconds(60)
+                );
 
-                // Create ScoreEvent
-                var scoreEvent = new ScoreEvent
-                {
-                    UserId = userId,
-                    GameSessionId = sessionId,
-                    ScoreDelta = earnedScore,
-                    TimeRange = timeRange,
-                    CreatedAt = now,
-                    AppliedToRedis = false
-                };
-                _db.ScoreEvents.Add(scoreEvent);
-                await _db.SaveChangesAsync();
-
-                // Update Redis leaderboard
-                var leaderboardKey = $"leaderboard:{timeRange}:{timeKey}";
-                await _redis.SortedSetIncrementAsync(leaderboardKey, userId.ToString(), earnedScore);
-                scoreEvent.AppliedToRedis = true;
-                await _db.SaveChangesAsync();
-
-                // Xử lý hiệu ứng mới từ reward (nếu có)
-                if (reward.Effect != null && reward.Effect.EffectType != EffectType.None)
-                {
-                    await _effectService.SetEffectAsync(userId, reward.Effect.EffectType.ToString(), reward.Effect.DurationSeconds);
-                }
-
-                return new PlayTurnResultDto
+                return new StartTurnResultDto
                 {
                     IceId = ice.IceId,
-                    IceName = ice.IceType.ToString(),
-                    ShakeCount = shakeCount,
-                    RewardId = reward.RewardId,
-                    RewardName = reward.RewardName,
-                    EarnedScore = earnedScore,
-                    EffectInfo = reward.Effect?.EffectType.ToString() ?? "",
-                    EffectDuration = reward.Effect?.DurationSeconds ?? 0
+                    IceType = ice.IceType.ToString(),
+                    ShakeCount = shakeCount
                 };
             }
             finally
             {
-                // Remove play lock in Redis
                 await _redis.KeyDeleteAsync(lockKey);
             }
         }
 
-        /// <summary>
-        /// Random chọn loại đá (Ice) dựa trên xác suất từng loại.
-        /// </summary>
-        private Ice RandomIceByProbability(List<Ice> iceList)
+        public async Task<PlayTurnResultDto> EndTurnAsync(Guid userId)
         {
-            // Random theo xác suất
-            if (iceList == null || iceList.Count == 0)
-                throw new NotFoundException("No ice available for random selection.");
-            var rnd = new Random();
-            double roll = rnd.NextDouble();
-            double cumulative = 0;
-            foreach (var ice in iceList.OrderBy(x => x.Probability))
-            {
-                cumulative += ice.Probability;
-                if (roll < cumulative)
-                    return ice;
-            }
-            return iceList.Last();
-        }
+            var turnJson = await _redis.StringGetAsync($"game:turn:active:{userId}");
+            if (!turnJson.HasValue)
+                throw new NotFoundException("No active turn");
 
-        /// <summary>
-        /// Random chọn phần thưởng dựa trên xác suất từng phần thưởng.
-        /// </summary>
-        private Reward RandomRewardByProbability(List<IceReward> iceRewards, List<Reward> rewards)
-        {
-            if (iceRewards == null || iceRewards.Count == 0)
-                throw new NotFoundException("No ice rewards available for random selection.");
-            if (rewards == null || rewards.Count == 0)
-                throw new NotFoundException("No rewards available for random selection.");
-            var rnd = new Random();
-            double roll = rnd.NextDouble();
-            double cumulative = 0;
-            foreach (var ir in iceRewards.OrderBy(x => x.Probability))
+            var turn = JsonSerializer.Deserialize<TurnCacheDto>(turnJson!)!;
+
+            var (reward, earnedScore) =
+                await _gamePlayService.EndTurnAsync(userId, turn.IceId);
+
+            var now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+            var timeKey = LeaderboardTimeKeyHelper.GetTimeKey(_defaultTimeRange, now);
+
+            var playTurn = new PlayTurn
             {
-                cumulative += ir.Probability;
-                if (roll < cumulative)
+                PlayTurnId = Guid.NewGuid(),
+                GameSessionId = turn.SessionId,
+                IceId = turn.IceId,
+                RewardId = reward.RewardId,
+                ShakeCount = turn.ShakeCount,
+                EarnedScore = earnedScore,
+                PlayedAt = DateTime.UtcNow,
+                TimeRange = _defaultTimeRange,
+                TimeKey = timeKey
+            };
+
+            _db.PlayTurns.Add(playTurn);
+
+            var state = await _db.LeaderboardStates
+                .FirstOrDefaultAsync(x =>
+                    x.UserId == userId &&
+                    x.TimeRange == _defaultTimeRange &&
+                    x.TimeKey == timeKey);
+
+            if (state == null)
+            {
+                state = new LeaderboardState
                 {
-                    var found = rewards.FirstOrDefault(r => r.RewardId == ir.RewardId);
-                    if (found == null)
-                        throw new NotFoundException($"Reward not found for IceReward: {ir.RewardId}");
-                    return found;
+                    UserId = userId,
+                    TimeRange = _defaultTimeRange,
+                    TimeKey = timeKey,
+                    TotalScore = earnedScore,
+                    PlayCount = 1,
+                    AchievedAt = DateTime.UtcNow,
+                    StableRandom = Math.Abs($"{userId}{timeKey}".GetHashCode()) % 1000,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                _db.LeaderboardStates.Add(state);
+            }
+            else
+            {
+                state.TotalScore += earnedScore;
+                state.PlayCount++;
+                state.UpdatedAt = DateTime.UtcNow;
+            }
+
+            await _db.SaveChangesAsync();
+
+            await _redis.SortedSetIncrementAsync(
+                $"leaderboard:{_defaultTimeRange}:{timeKey}",
+                userId.ToString(),
+                earnedScore);
+
+            // Apply effect
+            int durationSeconds = 0;
+            string effectTypeName = EffectType.None.ToString();
+            var effectType = reward.EffectType;
+            if (effectType != EffectType.None)
+            {
+                effectTypeName = effectType.ToString();
+                switch (effectType)
+                {
+                    case EffectType.Utility:
+                        await _effectService.SetUtilityAsync(userId, 3);
+                        break;
+                    case EffectType.BlockPlay:
+                    case EffectType.SpeedBoost:
+                    case EffectType.DoubleScore:
+                        await _effectService.SetEffectAsync(userId, effectType, 60);
+                        break;
+                    default:
+                        break;
+                }
+                // Retry lấy duration nếu lần đầu chưa có
+                int retry = 0;
+                const int maxRetry = 3;
+                const int delayMs = 50;
+                while (retry < maxRetry)
+                {
+                    try
+                    {
+                        durationSeconds = await _effectService.GetEffectDurationAsync(userId, effectType);
+                        break;
+                    }
+                    catch (NotFoundException)
+                    {
+                        retry++;
+                        if (retry >= maxRetry) throw;
+                        await Task.Delay(delayMs);
+                    }
                 }
             }
-            var lastIceReward = iceRewards.Last();
-            var lastReward = rewards.FirstOrDefault(r => r.RewardId == lastIceReward.RewardId);
-            if (lastReward == null)
-                throw new NotFoundException($"Reward not found for last IceReward: {lastIceReward.RewardId}");
-            return lastReward;
+
+            await _redis.KeyDeleteAsync($"game:turn:active:{userId}");
+
+            return new PlayTurnResultDto
+            {
+                PlayTurnId = playTurn.PlayTurnId,
+                IceId = turn.IceId,
+                ShakeCount = turn.ShakeCount,
+                RewardId = reward.RewardId,
+                RewardName = reward.RewardName,
+                EarnedScore = earnedScore,
+                EffectType = effectTypeName,
+                DurationSeconds = durationSeconds,
+            };
         }
+
     }
 }

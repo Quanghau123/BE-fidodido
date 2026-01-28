@@ -7,5 +7,6 @@ namespace FidoDino.Application.DTOs.Game
         public Guid IceId { get; set; }
         public IceType IceType { get; set; }
         public int ShakeCount { get; set; }
+        public double Probability { get; set; }
     }
 }

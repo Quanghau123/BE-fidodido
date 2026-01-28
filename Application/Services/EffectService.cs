@@ -1,70 +1,84 @@
 using System.ComponentModel.DataAnnotations;
-using FidoDino.Application.Interface;
+using FidoDino.Application.Interfaces;
 using FidoDino.Common.Exceptions;
-using StackExchange.Redis;
+using FidoDino.Domain.Enums.Game;
+using FidoDino.Infrastructure.Redis;
 
 namespace FidoDino.Application.Services
 {
     public class EffectService : IEffectService
     {
-        private readonly IDatabase _redis;
+        private readonly EffectCacheService _cache;
 
-        public EffectService(IConnectionMultiplexer redis)
+        public EffectService(EffectCacheService cache)
         {
-            _redis = redis.GetDatabase();
+            _cache = cache;
         }
 
-        /// <summary>
-        /// Kiểm tra người chơi có hiệu ứng (effect) cụ thể hay không.
-        /// </summary>
-        public async Task<bool> HasEffectAsync(Guid userId, string effectType)
+        public async Task<bool> HasEffectAsync(Guid userId, EffectType effectType)
         {
             if (userId == Guid.Empty)
                 throw new ArgumentException("UserId is required");
-            if (string.IsNullOrWhiteSpace(effectType))
+            if (effectType == EffectType.None)
                 throw new ArgumentException("EffectType is required");
-            return await _redis.KeyExistsAsync($"game:effect:{userId}:{effectType}");
+
+            return await _cache.HasEffect(userId, effectType.ToString());
         }
 
-        /// <summary>
-        /// Thiết lập hiệu ứng cho người chơi với thời gian tồn tại (giây).
-        /// </summary>
-        public async Task SetEffectAsync(Guid userId, string effectType, int durationSeconds)
+        public async Task SetEffectAsync(Guid userId, EffectType effectType, int durationSeconds)
         {
             if (userId == Guid.Empty)
                 throw new ArgumentException("UserId is required");
-            if (string.IsNullOrWhiteSpace(effectType))
+            if (effectType == EffectType.None)
                 throw new ArgumentException("EffectType is required");
             if (durationSeconds <= 0)
                 throw new ValidationException("Duration must be greater than 0");
-            await _redis.StringSetAsync($"game:effect:{userId}:{effectType}", durationSeconds, TimeSpan.FromSeconds(durationSeconds));
+
+            await _cache.SetEffect(userId, effectType.ToString(), durationSeconds);
         }
 
-        /// <summary>
-        /// Xóa hiệu ứng của người chơi khỏi Redis.
-        /// </summary>
-        public async Task RemoveEffectAsync(Guid userId, string effectType)
+        public async Task RemoveEffectAsync(Guid userId, EffectType effectType)
         {
             if (userId == Guid.Empty)
                 throw new ArgumentException("UserId is required");
-            if (string.IsNullOrWhiteSpace(effectType))
+            if (effectType == EffectType.None)
                 throw new ArgumentException("EffectType is required");
-            await _redis.KeyDeleteAsync($"game:effect:{userId}:{effectType}");
+
+            await _cache.RemoveEffect(userId, effectType.ToString());
         }
 
-        /// <summary>
-        /// Lấy thời gian hiệu ứng còn lại của người chơi (tính bằng giây).
-        /// </summary>
-        public async Task<int> GetEffectDurationAsync(Guid userId, string effectType)
+        public async Task<int> GetEffectDurationAsync(Guid userId, EffectType effectType)
         {
             if (userId == Guid.Empty)
                 throw new ArgumentException("UserId is required");
-            if (string.IsNullOrWhiteSpace(effectType))
+            if (effectType == EffectType.None)
                 throw new ArgumentException("EffectType is required");
-            var value = await _redis.StringGetAsync($"game:effect:{userId}:{effectType}");
-            if (!value.HasValue)
+
+            var remain = await _cache.GetEffectRemainSeconds(userId, effectType.ToString());
+            if (remain == null)
                 throw new NotFoundException("Effect not found for user");
-            return int.Parse(value!);
+
+            return remain.Value;
+        }
+
+        public async Task ConsumeUtilityAsync(Guid userId)
+        {
+            if (userId == Guid.Empty)
+                throw new ArgumentException("UserId is required");
+
+            var remain = await _cache.GetUtilityRemain(userId);
+            if (remain <= 0)
+                throw new ForbiddenException("No utility left");
+
+            await _cache.DecrementUtility(userId);
+        }
+
+        public async Task SetUtilityAsync(Guid userId, int count)
+        {
+            if (count <= 0)
+                throw new ValidationException("Utility count must be greater than 0");
+
+            await _cache.SetUtilityRemain(userId, count);
         }
     }
 }

@@ -2,7 +2,7 @@ using System;
 using System.Threading.Tasks;
 using FidoDino.Domain.Enums.Game;
 
-namespace FidoDino.Application.Interface
+namespace FidoDino.Application.Interfaces
 {
     public interface ISnapshotService
     {
