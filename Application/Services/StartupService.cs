@@ -34,7 +34,8 @@ namespace FidoDino.Application.Services
             foreach (var state in leaderboardStates)
             {
                 var key = $"leaderboard:{state.TimeRange}:{state.TimeKey}";
-                await _redis.SortedSetAddAsync(key, state.UserId.ToString(), state.TotalScore);
+                await _redis.SortedSetAddAsync(key, state.UserId.ToString(), state.CompositeScore);
+                await _redis.HashSetAsync($"{key}:scores", state.UserId.ToString(), state.TotalScore);
             }
 
             // Load Ice

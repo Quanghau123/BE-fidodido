@@ -7,5 +7,6 @@ namespace FidoDino.Domain.Interfaces.Leaderboard
     {
         Task<LeaderboardState?> GetByUserAndTimeAsync(Guid userId, TimeRangeType timeRange, string timeKey);
         Task AddOrUpdateAsync(LeaderboardState state);
+        Task DeleteByTimeRangeAsync(TimeRangeType timeRange, string timeKey);
     }
 }

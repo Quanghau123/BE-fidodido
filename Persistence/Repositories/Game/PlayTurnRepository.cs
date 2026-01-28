@@ -1,11 +1,8 @@
 using FidoDino.Domain.Entities.Game;
+using FidoDino.Domain.Enums.Game;
 using FidoDino.Domain.Interfaces.Game;
 using FidoDino.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace FidoDino.Persistence.Repositories.Game
 {
@@ -27,6 +24,12 @@ namespace FidoDino.Persistence.Repositories.Game
         public async Task AddAsync(PlayTurn playTurn)
         {
             await _context.PlayTurns.AddAsync(playTurn);
+            await _context.SaveChangesAsync();
+        }
+        public async Task DeleteByTimeRangeAsync(TimeRangeType timeRange, string timeKey)
+        {
+            var states = _context.PlayTurns.Where(x => x.TimeRange == timeRange && x.TimeKey == timeKey);
+            _context.PlayTurns.RemoveRange(states);
             await _context.SaveChangesAsync();
         }
     }

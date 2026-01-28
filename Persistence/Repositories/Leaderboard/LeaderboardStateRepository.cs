@@ -42,5 +42,12 @@ namespace FidoDino.Persistence.Repositories.Leaderboard
             }
             await _context.SaveChangesAsync();
         }
+
+        public async Task DeleteByTimeRangeAsync(TimeRangeType timeRange, string timeKey)
+        {
+            var states = _context.LeaderboardStates.Where(x => x.TimeRange == timeRange && x.TimeKey == timeKey);
+            _context.LeaderboardStates.RemoveRange(states);
+            await _context.SaveChangesAsync();
+        }
     }
 }

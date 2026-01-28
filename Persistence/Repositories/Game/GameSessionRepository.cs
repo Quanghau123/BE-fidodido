@@ -1,4 +1,5 @@
 using FidoDino.Domain.Entities.Game;
+using FidoDino.Domain.Enums.Game;
 using FidoDino.Domain.Interfaces.Game;
 using FidoDino.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -37,6 +38,12 @@ namespace FidoDino.Persistence.Repositories.Game
         public async Task<GameSession?> GetActiveSessionByUserIdAsync(Guid userId)
         {
             return await _context.GameSessions.FirstOrDefaultAsync(s => s.UserId == userId && s.IsActive);
+        }
+        public async Task DeleteByTimeRangeAsync(TimeRangeType timeRange, string timeKey)
+        {
+            var states = _context.GameSessions.Where(x => x.TimeRange == timeRange && x.TimeKey == timeKey);
+            _context.GameSessions.RemoveRange(states);
+            await _context.SaveChangesAsync();
         }
     }
 }

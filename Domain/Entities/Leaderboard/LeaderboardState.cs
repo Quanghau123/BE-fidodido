@@ -16,5 +16,6 @@ namespace FidoDino.Domain.Entities.Leaderboard
         public DateTime AchievedAt { get; set; }
         public int StableRandom { get; set; }
         public DateTime UpdatedAt { get; set; }
+        public long CompositeScore { get; set; }
     }
 }

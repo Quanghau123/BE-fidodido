@@ -251,6 +251,7 @@ using (var scope = app.Services.CreateScope())
                 "summary-day",
                 s => s.SummarizeAndResetAsync(TimeRangeType.Day, 100),
                 Cron.Daily(23, 59));
+            // Cron.Minutely());
             break;
 
         case TimeRangeType.Week:

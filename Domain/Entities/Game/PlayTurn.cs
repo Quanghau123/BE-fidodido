@@ -1,3 +1,5 @@
+using FidoDino.Domain.Enums.Game;
+
 namespace FidoDino.Domain.Entities.Game
 {
     public class PlayTurn
@@ -12,5 +14,7 @@ namespace FidoDino.Domain.Entities.Game
         public int ShakeCount { get; set; }
         public int EarnedScore { get; set; }
         public DateTime PlayedAt { get; set; }
+        public TimeRangeType TimeRange { get; set; }
+        public string TimeKey { get; set; } = null!;
     }
 }

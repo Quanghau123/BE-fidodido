@@ -157,7 +157,9 @@ namespace FidoDino.Application.Services
                 RewardId = rewardId,
                 ShakeCount = shakeCount,
                 EarnedScore = earnedScore,
-                PlayedAt = DateTime.UtcNow
+                PlayedAt = DateTime.UtcNow,
+                TimeRange = _defaultTimeRange,
+                TimeKey = LeaderboardTimeKeyHelper.GetTimeKey(_defaultTimeRange, DateTime.UtcNow)
             };
             await _turnRepo.AddAsync(playTurn);
 

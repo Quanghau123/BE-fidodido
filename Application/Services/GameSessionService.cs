@@ -100,7 +100,9 @@ namespace FidoDino.Application.Services
                 UserId = userId,
                 TotalScore = 0,
                 IsActive = true,
-                StartTime = DateTime.UtcNow
+                StartTime = DateTime.UtcNow,
+                TimeRange = _defaultTimeRange,
+                TimeKey = LeaderboardTimeKeyHelper.GetTimeKey(_defaultTimeRange, DateTime.UtcNow)
             };
 
             await _sessionRepository.AddAsync(session);
@@ -151,7 +153,10 @@ namespace FidoDino.Application.Services
 
             if (state != null)
             {
+                // Tính và lưu compositeScore vào DB khi kết thúc session
                 var compositeScore = LeaderboardScoreCalculator.Calculate(state);
+                state.CompositeScore = compositeScore;
+                await _leaderboardStateRepo.AddOrUpdateAsync(state);
                 DateTime date;
                 switch (state.TimeRange)
                 {

@@ -3,6 +3,7 @@ using System;
 using FidoDino.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace fidodino.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(FidoDinoDbContext))]
-    partial class FidoDinoDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260127160019_AddFieldCompositeScore")]
+    partial class AddFieldCompositeScore
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -217,13 +220,6 @@ namespace fidodino.Infrastructure.Data.Migrations
                     b.Property<DateTime>("StartTime")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("TimeKey")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("TimeRange")
-                        .HasColumnType("integer");
-
                     b.Property<int>("TotalScore")
                         .HasColumnType("integer");
 
@@ -329,13 +325,6 @@ namespace fidodino.Infrastructure.Data.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<int>("ShakeCount")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("TimeKey")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("TimeRange")
                         .HasColumnType("integer");
 
                     b.HasKey("PlayTurnId");

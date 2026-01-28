@@ -102,7 +102,9 @@ namespace FidoDino.Application.Services
                     RewardId = reward.RewardId,
                     ShakeCount = shakeCount,
                     EarnedScore = earnedScore,
-                    PlayedAt = DateTime.UtcNow
+                    PlayedAt = DateTime.UtcNow,
+                    TimeRange = _defaultTimeRange,
+                    TimeKey = LeaderboardTimeKeyHelper.GetTimeKey(_defaultTimeRange, DateTime.UtcNow)
                 };
                 _db.PlayTurns.Add(playTurn);
                 session.TotalScore += earnedScore;

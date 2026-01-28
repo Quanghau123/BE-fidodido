@@ -1,4 +1,5 @@
 using FidoDino.Domain.Entities.Game;
+using FidoDino.Domain.Enums.Game;
 
 namespace FidoDino.Domain.Interfaces.Game
 {
@@ -10,5 +11,6 @@ namespace FidoDino.Domain.Interfaces.Game
         Task UpdateAsync(GameSession session);
         Task<IEnumerable<GameSession>> GetByUserIdAsync(Guid userId);
         Task<GameSession?> GetActiveSessionByUserIdAsync(Guid userId);
+        Task DeleteByTimeRangeAsync(TimeRangeType timeRange, string timeKey);
     }
 }
