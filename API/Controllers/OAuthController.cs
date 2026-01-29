@@ -20,7 +20,7 @@ namespace FidoDino.API.Controllers
         }
 
         /// <summary>
-        /// [1.6] OAuth login
+        /// OAuth login
         /// </summary>
         [HttpGet("{provider}/login")]
         public IActionResult Login(string provider)
@@ -38,7 +38,7 @@ namespace FidoDino.API.Controllers
         }
 
         /// <summary>
-        /// [1.7] OAuth callback
+        /// OAuth callback
         /// </summary>
         [HttpGet("{provider}/callback")]
         public async Task<IActionResult> Callback(

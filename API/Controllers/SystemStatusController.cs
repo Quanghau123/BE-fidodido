@@ -24,7 +24,7 @@ namespace FidoDino.API.Controllers
         }
 
         /// <summary>
-        /// [2.4] Cập nhật trạng thái hệ thống
+        /// Cập nhật trạng thái hệ thống
         /// </summary>
         [HttpPost]
         public async Task<IActionResult> UpdateStatus([FromBody] SystemStatus status)

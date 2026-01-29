@@ -12,5 +12,6 @@ namespace FidoDino.Application.Interfaces
         Task<int> GetEffectDurationAsync(Guid userId, EffectType effectType);
         Task ConsumeUtilityAsync(Guid userId);
         Task SetUtilityAsync(Guid userId, int count);
+        Task<int> GetUtilityRemainAsync(Guid userId);
     }
 }

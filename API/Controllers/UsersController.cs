@@ -20,7 +20,7 @@ namespace FidoDino.WebApi.Controllers
         }
 
         /// <summary>
-        /// [1.8] Đăng ký user
+        /// Đăng ký user
         /// </summary>
         [HttpPost]
         [Authorize(Policy = Permissions.User_Create)]
@@ -31,7 +31,7 @@ namespace FidoDino.WebApi.Controllers
         }
 
         /// <summary>
-        /// [1.9] Lấy danh sách user
+        /// Lấy danh sách user
         /// </summary>
         [HttpGet]
         [Authorize(Policy = Permissions.User_View)]
@@ -42,7 +42,7 @@ namespace FidoDino.WebApi.Controllers
         }
 
         /// <summary>
-        /// [1.10] Cập nhật user
+        /// Cập nhật user
         /// </summary>
         [HttpPut("{userId}")]
         [Authorize(Policy = Permissions.User_Update)]
@@ -53,7 +53,7 @@ namespace FidoDino.WebApi.Controllers
         }
 
         /// <summary>
-        /// [1.11] Xóa user
+        /// Xóa user
         /// </summary>
         [HttpDelete("{userId}")]
         [Authorize(Policy = Permissions.User_Delete)]
@@ -64,7 +64,7 @@ namespace FidoDino.WebApi.Controllers
         }
 
         /// <summary>
-        /// [1.12] Export user
+        /// Export user
         /// </summary>
         [HttpGet("export")]
         [Authorize(Policy = Permissions.User_Export)]

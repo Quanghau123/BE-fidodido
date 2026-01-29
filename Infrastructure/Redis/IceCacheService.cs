@@ -21,6 +21,7 @@ namespace FidoDino.Infrastructure.Redis
             {
                 try
                 {
+                    //chuyển JSON string lấy từ Redis thành object IceRedisModel
                     var iceObj = JsonSerializer.Deserialize<IceRedisModel>(entry.Value!);
                     if (iceObj != null)
                     {

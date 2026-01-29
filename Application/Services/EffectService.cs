@@ -61,6 +61,14 @@ namespace FidoDino.Application.Services
             return remain.Value;
         }
 
+        public async Task<int> GetUtilityRemainAsync(Guid userId)
+        {
+            if (userId == Guid.Empty)
+                throw new ArgumentException("UserId is required");
+
+            return await _cache.GetUtilityRemain(userId);
+        }
+
         public async Task ConsumeUtilityAsync(Guid userId)
         {
             if (userId == Guid.Empty)
@@ -70,6 +78,7 @@ namespace FidoDino.Application.Services
             if (remain <= 0)
                 throw new ForbiddenException("No utility left");
 
+            //DecrementUtility dùng để trừ đi 1 lần sử dụng hiệu ứng Utility
             await _cache.DecrementUtility(userId);
         }
 

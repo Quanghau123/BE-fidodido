@@ -17,7 +17,7 @@ namespace FidoDino.API.Controllers
         }
 
         /// <summary>
-        /// [8.1] Snapshot GameSession
+        /// Snapshot GameSession
         /// </summary>
         [HttpPost("gamesession")]
         public async Task<IActionResult> SnapshotGameSession([FromQuery] Guid sessionId)
@@ -27,7 +27,7 @@ namespace FidoDino.API.Controllers
         }
 
         /// <summary>
-        /// [8.2] Snapshot Leaderboard
+        /// Snapshot Leaderboard
         /// </summary>
         [HttpPost("leaderboard")]
         public async Task<IActionResult> SnapshotLeaderboard([FromQuery] TimeRangeType timeRange, [FromQuery] string timeKey)

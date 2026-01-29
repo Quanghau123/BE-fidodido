@@ -29,40 +29,17 @@ namespace FidoDino.API.Controllers
             foreach (var key in keys)
             {
                 var effectType = key.ToString().Split(':').Last();
-                var duration = await db.StringGetAsync(key);
-                effects.Add(new { EffectType = effectType, Duration = duration.ToString() });
+                var ttl = await db.KeyTimeToLiveAsync(key);
+                effects.Add(new { EffectType = effectType, Duration = ttl?.TotalSeconds ?? 0 });
             }
+
+            var utilityVal = await db.StringGetAsync($"effect:utility:{userId}");
+            if (utilityVal.HasValue && int.TryParse(utilityVal, out var utilityCount) && utilityCount > 0)
+            {
+                effects.Add(new { EffectType = "AutoBreakIce", Duration = utilityCount });
+            }
+
             return Ok(effects);
-        }
-
-        /// <summary>
-        /// [5.2] Kiểm tra user có hiệu ứng
-        /// </summary>
-        [HttpGet("has-effect")]
-        public async Task<ActionResult<bool>> HasEffect([FromQuery] Guid userId, [FromQuery] EffectType effectType)
-        {
-            var has = await _effectService.HasEffectAsync(userId, effectType);
-            return Ok(has);
-        }
-
-        /// <summary>
-        /// [5.3] Set hiệu ứng
-        /// </summary>
-        [HttpPost("set-effect")]
-        public async Task<IActionResult> SetEffect([FromQuery] Guid userId, [FromQuery] EffectType effectType, [FromQuery] int durationSeconds)
-        {
-            await _effectService.SetEffectAsync(userId, effectType, durationSeconds);
-            return NoContent();
-        }
-
-        /// <summary>
-        /// [5.4] Xóa hiệu ứng
-        /// </summary>
-        [HttpDelete("remove-effect")]
-        public async Task<IActionResult> RemoveEffect([FromQuery] Guid userId, [FromQuery] EffectType effectType)
-        {
-            await _effectService.RemoveEffectAsync(userId, effectType);
-            return NoContent();
         }
     }
 }

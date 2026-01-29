@@ -19,7 +19,7 @@ namespace FidoDino.API.Controllers
         }
 
         /// <summary>
-        /// [6.1] Lấy 1 ice
+        /// Lấy 1 ice
         /// </summary>
         [HttpGet("ice/{id}")]
         public async Task<IActionResult> GetIceById(Guid id)
@@ -29,7 +29,7 @@ namespace FidoDino.API.Controllers
         }
 
         /// <summary>
-        /// [6.2] Lấy tất cả ice
+        /// Lấy tất cả ice
         /// </summary>
         [HttpGet("ice")]
         public async Task<IActionResult> GetAllIce()
@@ -39,7 +39,7 @@ namespace FidoDino.API.Controllers
         }
 
         /// <summary>
-        /// [6.3] Thêm ice
+        /// Thêm ice
         /// </summary>
         [HttpPost("ice")]
         public async Task<IActionResult> AddIce([FromBody] IceRequestAdd ice)
@@ -51,7 +51,7 @@ namespace FidoDino.API.Controllers
         }
 
         /// <summary>
-        /// [6.4] Sửa ice
+        /// Sửa ice
         /// </summary>
         [HttpPut("ice")]
         public async Task<IActionResult> UpdateIce([FromBody] IceRequestUpdate ice)
@@ -63,7 +63,7 @@ namespace FidoDino.API.Controllers
         }
 
         /// <summary>
-        /// [6.5] Xóa ice
+        /// Xóa ice
         /// </summary>
         [HttpDelete("ice/{id}")]
         public async Task<IActionResult> DeleteIce(Guid id)
@@ -74,7 +74,7 @@ namespace FidoDino.API.Controllers
 
         // Reward endpoints
         /// <summary>
-        /// [6.6] Lấy 1 reward
+        /// Lấy 1 reward
         /// </summary>
         [HttpGet("reward/{id}")]
         public async Task<IActionResult> GetRewardById(Guid id)
@@ -84,7 +84,7 @@ namespace FidoDino.API.Controllers
         }
 
         /// <summary>
-        /// [6.7] Lấy tất cả reward
+        /// Lấy tất cả reward
         /// </summary>
         [HttpGet("reward")]
         public async Task<IActionResult> GetAllReward()
@@ -94,7 +94,7 @@ namespace FidoDino.API.Controllers
         }
 
         /// <summary>
-        /// [6.8] Thêm reward
+        /// Thêm reward
         /// </summary>
         [HttpPost("reward")]
         public async Task<IActionResult> AddReward([FromBody] RewardRequestAdd reward)
@@ -106,7 +106,7 @@ namespace FidoDino.API.Controllers
         }
 
         /// <summary>
-        /// [6.9] Sửa reward
+        /// Sửa reward
         /// </summary>
         [HttpPut("reward")]
         public async Task<IActionResult> UpdateReward([FromBody] RewardRequestUpdate reward)
@@ -118,7 +118,7 @@ namespace FidoDino.API.Controllers
         }
 
         /// <summary>
-        /// [6.10] Xóa reward
+        /// Xóa reward
         /// </summary>
         [HttpDelete("reward/{id}")]
         public async Task<IActionResult> DeleteReward(Guid id)
@@ -129,7 +129,7 @@ namespace FidoDino.API.Controllers
 
         // IceReward endpoints
         /// <summary>
-        /// [6.11] Lấy iceReward theo ice
+        /// Lấy iceReward theo ice
         /// </summary>
         [HttpGet("icereward/ice/{iceId}")]
         public async Task<IActionResult> GetIceRewardsByIceId(Guid iceId)
@@ -139,7 +139,7 @@ namespace FidoDino.API.Controllers
         }
 
         /// <summary>
-        /// [6.12] Thêm iceReward
+        /// Thêm iceReward
         /// </summary>
         [HttpPost("icereward")]
         public async Task<IActionResult> AddIceReward([FromBody] IceRewardRequestAdd iceReward)
@@ -151,7 +151,7 @@ namespace FidoDino.API.Controllers
         }
 
         /// <summary>
-        /// [6.13] Sửa iceReward
+        /// Sửa iceReward
         /// </summary>
         [HttpPut("icereward")]
         public async Task<IActionResult> UpdateIceReward([FromBody] IceRewardRequestUpdate iceReward)
@@ -163,7 +163,7 @@ namespace FidoDino.API.Controllers
         }
 
         /// <summary>
-        /// [6.14] Xóa iceReward
+        /// Xóa iceReward
         /// </summary>
         [HttpDelete("icereward/{id}")]
         public async Task<IActionResult> DeleteIceReward(Guid id)

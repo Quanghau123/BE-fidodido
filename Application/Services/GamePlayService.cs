@@ -12,6 +12,7 @@ namespace FidoDino.Application.Services
         private readonly IceRewardCacheService _iceRewardCache;
         private readonly RewardCacheService _rewardCache;
         private readonly IEffectService _effectService;
+        //IConnectionMultiplexer là đối tượng duy nhất dùng chung trong app để quản lý toàn bộ kết nối Redis
         private readonly StackExchange.Redis.IConnectionMultiplexer _multiplexer;
 
         public GamePlayService(
@@ -28,6 +29,9 @@ namespace FidoDino.Application.Services
             _multiplexer = multiplexer;
         }
 
+        /// <summary>
+        /// Bắt đầu lượt chơi, trả về loại ice và số lần lắc cho user.
+        /// </summary>
         public async Task<(IceResultDto ice, int shakeCount)> StartTurnAsync(Guid userId)
         {
             var iceList = await _iceCache.GetAllIcesAsync();
@@ -35,7 +39,7 @@ namespace FidoDino.Application.Services
 
             int shakeCount = ice.ShakeCount;
 
-            if (await _effectService.HasEffectAsync(userId, EffectType.Utility))
+            if (await _effectService.GetUtilityRemainAsync(userId) > 0)
             {
                 shakeCount = 0;
                 await _effectService.ConsumeUtilityAsync(userId);
@@ -43,11 +47,15 @@ namespace FidoDino.Application.Services
 
             if (await _effectService.HasEffectAsync(userId, EffectType.SpeedBoost))
             {
+                //Math.Ceiling làm tròn số lên số nguyên gần nhất
                 shakeCount = (int)Math.Ceiling(shakeCount * 0.5);
             }
 
             return (ice, shakeCount);
         }
+        /// <summary>
+        /// Kết thúc lượt chơi, trả về phần thưởng và điểm số đạt được.
+        /// </summary>
         public async Task<(RewardResultDto reward, int earnedScore)> EndTurnAsync(Guid userId, Guid iceId)
         {
             var iceRewards = await _iceRewardCache.GetIceRewardsAsync(iceId);
@@ -60,6 +68,7 @@ namespace FidoDino.Application.Services
             string effectTypeName = EffectType.None.ToString();
             if (rewardRedis.EffectId.HasValue && rewardRedis.EffectId.Value != Guid.Empty)
             {
+                //_multiplexer được dùng để tạo kết nối Redis cho EffectCacheService, từ đó lấy thông tin effect từ Redis theo EffectId
                 var effectCache = new EffectCacheService(_multiplexer);
                 var effect = await effectCache.GetEffectAsync(rewardRedis.EffectId.Value);
                 if (effect != null)
@@ -85,6 +94,9 @@ namespace FidoDino.Application.Services
             return (reward, earnedScore);
         }
 
+        /// <summary>
+        /// Chọn ngẫu nhiên một ice dựa trên xác suất.
+        /// </summary>
         private IceResultDto RandomIceByProbability(List<IceResultDto> iceList)
         {
             if (!iceList.Any())
@@ -103,8 +115,10 @@ namespace FidoDino.Application.Services
             return iceList.Last();
         }
 
-        private IceRewardCacheService.IceRewardRedisDto RandomRewardByProbability(
-            List<IceRewardCacheService.IceRewardRedisDto> rewards)
+        /// <summary>
+        /// Chọn ngẫu nhiên một phần thưởng dựa trên xác suất.
+        /// </summary>
+        private IceRewardRedisDto RandomRewardByProbability(List<IceRewardRedisDto> rewards)
         {
             if (!rewards.Any())
                 throw new NotFoundException("No rewards for ice");

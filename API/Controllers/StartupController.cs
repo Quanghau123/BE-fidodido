@@ -15,7 +15,7 @@ namespace FidoDino.API.Controllers
         }
 
         /// <summary>
-        /// [2.2] Quản lý Khởi động và Hệ thống:
+        /// Quản lý Khởi động và Hệ thống:
         /// Kiểm tra trạng thái sẵn sàng và mức độ đồng bộ dữ liệu Redis
         /// </summary>
         [HttpGet("health")]

@@ -38,6 +38,9 @@ namespace FidoDino.Application.Services
                 _defaultTimeRange = TimeRangeType.Day;
         }
 
+        /// <summary>
+        /// Bắt đầu lượt chơi cho user, kiểm tra trạng thái hệ thống, session và hiệu ứng block.
+        /// </summary>
         public async Task<StartTurnResultDto> StartTurnAsync(Guid userId, Guid sessionId)
         {
             var lockKey = $"game:lock:{userId}";
@@ -85,6 +88,9 @@ namespace FidoDino.Application.Services
             }
         }
 
+        /// <summary>
+        /// Kết thúc lượt chơi, tính điểm, cập nhật bảng xếp hạng, áp dụng hiệu ứng và trả về kết quả lượt chơi.
+        /// </summary>
         public async Task<PlayTurnResultDto> EndTurnAsync(Guid userId)
         {
             var turnJson = await _redis.StringGetAsync($"game:turn:active:{userId}");
@@ -144,6 +150,7 @@ namespace FidoDino.Application.Services
 
             await _db.SaveChangesAsync();
 
+            //SortedSetIncrementAsync dùng để cộng thêm một giá trị vào score của một member trong Redis Sorted Set (tự tạo nếu chưa tồn tại)
             await _redis.SortedSetIncrementAsync(
                 $"leaderboard:{_defaultTimeRange}:{timeKey}",
                 userId.ToString(),
@@ -156,35 +163,40 @@ namespace FidoDino.Application.Services
             if (effectType != EffectType.None)
             {
                 effectTypeName = effectType.ToString();
-                switch (effectType)
+                if (effectType == EffectType.AutoBreakIce)
                 {
-                    case EffectType.Utility:
-                        await _effectService.SetUtilityAsync(userId, 3);
-                        break;
-                    case EffectType.BlockPlay:
-                    case EffectType.SpeedBoost:
-                    case EffectType.DoubleScore:
-                        await _effectService.SetEffectAsync(userId, effectType, 60);
-                        break;
-                    default:
-                        break;
+                    await _effectService.SetUtilityAsync(userId, 3);
+                    durationSeconds = 0; // Utility không có thời gian hiệu lực
                 }
-                // Retry lấy duration nếu lần đầu chưa có
-                int retry = 0;
-                const int maxRetry = 3;
-                const int delayMs = 50;
-                while (retry < maxRetry)
+                else
                 {
-                    try
+                    switch (effectType)
                     {
-                        durationSeconds = await _effectService.GetEffectDurationAsync(userId, effectType);
-                        break;
+                        case EffectType.BlockPlay:
+                        case EffectType.SpeedBoost:
+                        case EffectType.DoubleScore:
+                            await _effectService.SetEffectAsync(userId, effectType, 60);
+                            break;
+                        default:
+                            break;
                     }
-                    catch (NotFoundException)
+                    // lấy thời gian còn lại của effect, nhưng có cơ chế retry vì Redis có thể chưa kịp ghi xong
+                    int retry = 0; //số lần đã thử
+                    const int maxRetry = 3;
+                    const int delayMs = 50; //fail thì đợi 50ms
+                    while (retry < maxRetry)
                     {
-                        retry++;
-                        if (retry >= maxRetry) throw;
-                        await Task.Delay(delayMs);
+                        try
+                        {
+                            durationSeconds = await _effectService.GetEffectDurationAsync(userId, effectType);
+                            break;
+                        }
+                        catch (NotFoundException)
+                        {
+                            retry++;
+                            if (retry >= maxRetry) throw;
+                            await Task.Delay(delayMs);
+                        }
                     }
                 }
             }

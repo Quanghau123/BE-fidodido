@@ -31,7 +31,7 @@ namespace FidoDino.API.Controllers
         }
 
         /// <summary>
-        /// [3.2] Bắt đầu session
+        /// Bắt đầu session
         /// </summary>
         [HttpPost("start")]
         public async Task<ActionResult<GameSessionDto>> StartSession([FromQuery] Guid userId)
@@ -41,7 +41,7 @@ namespace FidoDino.API.Controllers
         }
 
         /// <summary>
-        /// [3.3] Kết thúc session
+        /// Kết thúc session
         /// </summary>
         [HttpPost("end")]
         public async Task<IActionResult> EndSession([FromQuery] Guid sessionId)

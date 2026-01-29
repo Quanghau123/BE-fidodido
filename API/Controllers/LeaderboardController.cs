@@ -1,8 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using FidoDino.Application.Services;
 using FidoDino.Domain.Enums.Game;
 using FidoDino.Application.Interfaces;
-using FidoDino.Domain.Entities.Leaderboard;
 
 namespace FidoDino.API.Controllers
 {
@@ -12,42 +10,25 @@ namespace FidoDino.API.Controllers
     {
         private readonly ILeaderboardAppService _leaderboardAppService;
         private readonly ILeaderboardService _leaderboardService;
-        public LeaderboardController(ILeaderboardAppService leaderboardAppService, ILeaderboardService leaderboardService)
+        private readonly TimeRangeType _defaultTimeRange;
+        public LeaderboardController(ILeaderboardAppService leaderboardAppService, ILeaderboardService leaderboardService, IConfiguration config)
         {
             _leaderboardAppService = leaderboardAppService;
             _leaderboardService = leaderboardService;
-        }
 
-        /// <summary>
-        /// [7.1] Lấy trạng thái user trên BXH
-        /// </summary>
-        [HttpGet("user-state")]
-        public async Task<IActionResult> GetUserLeaderboardState(Guid userId, TimeRangeType timeRange, DateTime? date = null)
-        {
-            var now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
-            var targetDate = date ?? now;
-
-            var state = await _leaderboardAppService
-                .GetUserLeaderboardState(userId, timeRange, targetDate);
-
-            return Ok(state);
+            Enum.TryParse(config["Leaderboard:DefaultTimeRange"], true, out _defaultTimeRange);
+            if (_defaultTimeRange == 0)
+                _defaultTimeRange = TimeRangeType.Day;
         }
 
         /// <summary>
         /// Lấy thứ hạng của user.
         /// </summary>
         [HttpGet("rank")]
-        public async Task<IActionResult> GetUserRank([FromQuery] Guid userId, [FromQuery] string timeRange)
+        public async Task<IActionResult> GetUserRank([FromQuery] Guid userId)
         {
-            var dateStr = Request.Query["date"].ToString();
-            DateTime date;
-            if (string.IsNullOrWhiteSpace(dateStr))
-                date = DateTime.Today;
-            else if (!DateTime.TryParse(dateStr, out date))
-                return BadRequest("Invalid date (yyyy-MM-dd)");
-            if (!Enum.TryParse<TimeRangeType>(timeRange, true, out var timeRangeEnum))
-                return BadRequest("Invalid timeRange. Use: Day, Week, Month");
-            var result = await _leaderboardService.GetUserRankAsync(userId, timeRangeEnum, date);
+            var now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+            var result = await _leaderboardService.GetUserRankAsync(userId, _defaultTimeRange, now);
             return Ok(result);
         }
     }

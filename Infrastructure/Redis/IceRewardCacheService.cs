@@ -1,3 +1,4 @@
+using FidoDino.Application.DTOs.Game;
 using StackExchange.Redis;
 using System.Text.Json;
 
@@ -16,13 +17,6 @@ namespace FidoDino.Infrastructure.Redis
             var json = await _redis.StringGetAsync($"game:ice_reward:{iceId}");
             if (json.IsNullOrEmpty) return new List<IceRewardRedisDto>();
             return JsonSerializer.Deserialize<List<IceRewardRedisDto>>(json!) ?? new List<IceRewardRedisDto>();
-        }
-
-        public class IceRewardRedisDto
-        {
-            public Guid IceId { get; set; }
-            public Guid RewardId { get; set; }
-            public double Probability { get; set; }
         }
     }
 }
