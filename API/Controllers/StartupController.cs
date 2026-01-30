@@ -14,10 +14,7 @@ namespace FidoDino.API.Controllers
             _startupService = startupService;
         }
 
-        /// <summary>
-        /// Quản lý Khởi động và Hệ thống:
-        /// Kiểm tra trạng thái sẵn sàng và mức độ đồng bộ dữ liệu Redis
-        /// </summary>
+        // Kiểm tra trạng thái sẵn sàng và mức độ đồng bộ dữ liệu Redis
         [HttpGet("health")]
         public async Task<IActionResult> HealthCheck()
         {

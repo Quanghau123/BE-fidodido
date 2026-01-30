@@ -19,9 +19,6 @@ namespace FidoDino.API.Controllers
             _authService = authService;
         }
 
-        /// <summary>
-        /// [1.1] Đăng nhập
-        /// </summary>
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest data)
         {
@@ -29,9 +26,6 @@ namespace FidoDino.API.Controllers
             return Ok(new ApiResponse<LoginResponseDto>(true, "Login successful.", result));
         }
 
-        /// <summary>
-        /// [1.2] Refresh token
-        /// </summary>
         [HttpPost("refresh-token")]
         public async Task<IActionResult> RefreshToken([FromBody] TokenRequestDto data)
         {
@@ -39,9 +33,6 @@ namespace FidoDino.API.Controllers
             return Ok(new ApiResponse<TokenResponseDto>(true, "Token refreshed successfully.", result));
         }
 
-        /// <summary>
-        /// [1.3] Logout
-        /// </summary>
         [HttpPost("logout")]
         public async Task<IActionResult> Logout()
         {
@@ -52,9 +43,6 @@ namespace FidoDino.API.Controllers
             return Ok(new ApiResponse<object>(true, "Logout successful."));
         }
 
-        /// <summary>
-        /// [1.4] Quên mật khẩu
-        /// </summary>
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
         {
@@ -62,9 +50,6 @@ namespace FidoDino.API.Controllers
             return Ok(new ApiResponse<object>(true, "If the email exists, a reset link has been sent."));
         }
 
-        /// <summary>
-        /// [1.5] Reset mật khẩu
-        /// </summary>
         [HttpPost("reset-password")]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
         {

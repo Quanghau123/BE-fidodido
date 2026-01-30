@@ -22,12 +22,10 @@ namespace FidoDino.Application.Services
         {
             _context = context;
             _authTokenService = authTokenService;
+            //StringComparer.OrdinalIgnoreCase: để key không phân biệt chữ hoa thường
             _clients = clients.ToDictionary(c => c.ProviderName, StringComparer.OrdinalIgnoreCase);
         }
 
-        /// <summary>
-        /// Đăng nhập bằng OAuth, lấy thông tin người dùng từ provider và xử lý đăng nhập hoặc đăng ký mới.
-        /// </summary>
         public async Task<LoginResponseDto> LoginAsync(string provider, string code)
         {
             if (!_clients.TryGetValue(provider, out var client))
@@ -37,9 +35,6 @@ namespace FidoDino.Application.Services
             return await HandleOAuthUserAsync(userInfo);
         }
 
-        /// <summary>
-        /// Xử lý thông tin người dùng từ OAuth: kiểm tra tồn tại, tạo mới nếu chưa có, và cấp token đăng nhập.
-        /// </summary>
         private async Task<LoginResponseDto> HandleOAuthUserAsync(OAuthUserInfoDto userInfo)
         {
             var user = await _context.Users.FirstOrDefaultAsync(u =>

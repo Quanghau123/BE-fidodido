@@ -7,5 +7,6 @@ namespace FidoDino.Domain.Interfaces.Leaderboard
     {
         Task<IEnumerable<LeaderboardSnapshot>> GetByTimeRangeAsync(TimeRangeType timeRange, string timeKey);
         Task AddAsync(LeaderboardSnapshot snapshot);
+        Task<List<(LeaderboardSnapshot Snapshot, string UserName)>> GetTopAsync(TimeRangeType timeRange, string timeKey, int topN);
     }
 }

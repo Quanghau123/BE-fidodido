@@ -8,7 +8,7 @@ namespace FidoDino.Domain.Entities.Auth
     {
         public Guid UserId { get; set; }
         public string UserName { get; set; } = null!;
-        public string Password { get; set; } = null!;
+        public string? Password { get; set; }
         public string Email { get; set; } = null!;
         public AuthProvider AuthProvider { get; set; } = AuthProvider.Local;
         public string? ProviderUserId { get; set; }

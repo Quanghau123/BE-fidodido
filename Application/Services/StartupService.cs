@@ -1,6 +1,7 @@
 using FidoDino.Application.Interfaces;
 using FidoDino.Common;
 using FidoDino.Infrastructure.Data;
+using FidoDino.Infrastructure.Redis;
 using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
 
@@ -10,16 +11,16 @@ namespace FidoDino.Application.Services
     {
         private readonly FidoDinoDbContext _db;
         private readonly IDatabase _redis;
+        private readonly SystemStatusRedisLoader _systemStatusRedisLoader;
 
-        public StartupService(FidoDinoDbContext db, IConnectionMultiplexer redis)
+        public StartupService(FidoDinoDbContext db, IConnectionMultiplexer redis, SystemStatusRedisLoader systemStatusRedisLoader)
         {
             _db = db;
             _redis = redis.GetDatabase();
+            _systemStatusRedisLoader = systemStatusRedisLoader;
         }
 
-        /// <summary>
-        /// Load dữ liệu nền tảng (người dùng, bảng xếp hạng, phần thưởng, trạng thái hệ thống...) từ database lên Redis.
-        /// </summary>
+        // Load dữ liệu nền tảng (người dùng, bảng xếp hạng, phần thưởng, trạng thái hệ thống...) từ database lên Redis.
         public async Task LoadPlatformDataToRedisAsync()
         {
             // Load Users
@@ -114,11 +115,7 @@ namespace FidoDino.Application.Services
             }
 
             // Load SystemStatus
-            var systemStatus = await _db.SystemStatuses.OrderByDescending(x => x.UpdatedAt).FirstOrDefaultAsync();
-            if (systemStatus != null)
-            {
-                await _redis.StringSetAsync("game:system_status", systemStatus.StatusCode.ToString());
-            }
+            await _systemStatusRedisLoader.LoadSystemStatusToRedisAsync();
 
             // Restore leaderboard from ScoreEvent
             var scoreEvents = await _db.ScoreEvents.Where(e => !e.AppliedToRedis).ToListAsync();
@@ -133,9 +130,7 @@ namespace FidoDino.Application.Services
             await _db.SaveChangesAsync();
         }
 
-        /// <summary>
-        /// Kiểm tra trạng thái hệ thống và dữ liệu đã được load lên Redis chưa.
-        /// </summary>
+        // Kiểm tra trạng thái hệ thống và dữ liệu đã được load lên Redis chưa.
         public async Task<object> GetHealthStatusAsync()
         {
             var redisStatus = _redis.Ping();

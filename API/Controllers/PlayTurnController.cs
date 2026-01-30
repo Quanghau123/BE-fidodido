@@ -15,9 +15,7 @@ namespace FidoDino.Api.Controllers
             _playTurnService = playTurnService;
         }
 
-        /// <summary>
-        /// Random Ice + ShakeCount
-        /// </summary>
+        // Random Ice + ShakeCount
         [HttpPost("turn/start")]
         public async Task<ActionResult<StartTurnResultDto>> StartTurn(
             [FromBody] PlayTurnRequest request)
@@ -32,9 +30,7 @@ namespace FidoDino.Api.Controllers
             return Ok(result);
         }
 
-        /// <summary>
-        /// Random Reward + Save DB + Leaderboard
-        /// </summary>
+        // Random Reward + Save DB + Leaderboard
         [HttpPost("turn/end")]
         public async Task<ActionResult<PlayTurnResultDto>> EndTurn([FromBody] EndTurnRequest request)
         {

@@ -14,10 +14,7 @@ namespace FidoDino.API.Controllers
             _effectService = effectService;
         }
 
-
-        /// <summary>
-        /// [5.1] Lấy hiệu ứng đang active
-        /// </summary>
+        // Lấy hiệu ứng đang active
         [HttpGet("active")]
         public async Task<IActionResult> GetActiveEffects([FromQuery] Guid userId, [FromServices] StackExchange.Redis.IConnectionMultiplexer redis)
         {

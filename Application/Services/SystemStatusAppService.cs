@@ -4,15 +4,18 @@ using FidoDino.Application.Interfaces;
 using FidoDino.Common.Exceptions;
 using System.ComponentModel.DataAnnotations;
 using FidoDino.Domain.Enums.Game;
+using FidoDino.Infrastructure.Redis;
 
 namespace FidoDino.Application.Services
 {
     public class SystemStatusAppService : ISystemStatusAppService
     {
         private readonly ISystemStatusRepository _repo;
-        public SystemStatusAppService(ISystemStatusRepository repo)
+        private readonly SystemStatusRedisLoader _systemStatusRedisLoader;
+        public SystemStatusAppService(ISystemStatusRepository repo, SystemStatusRedisLoader systemStatusRedisLoader)
         {
             _repo = repo;
+            _systemStatusRedisLoader = systemStatusRedisLoader;
         }
         public async Task<SystemStatus?> GetCurrentStatusAsync()
         {
@@ -28,6 +31,7 @@ namespace FidoDino.Application.Services
             if (!Enum.IsDefined(typeof(SystemStatusType), status.StatusCode))
                 throw new ValidationException("StatusCode is invalid");
             await _repo.UpdateStatusAsync(status);
+            await _systemStatusRedisLoader.LoadSystemStatusToRedisAsync();
         }
     }
 }

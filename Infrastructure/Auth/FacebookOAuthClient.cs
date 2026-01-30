@@ -22,6 +22,7 @@ namespace FidoDino.Infrastructure.Auth
 
         public async Task<OAuthUserInfoDto> GetUserInfoAsync(string code)
         {
+            // Gọi API Facebook để lấy access token
             var tokenResponse = await _httpClient.GetAsync(
                 $"https://graph.facebook.com/v18.0/oauth/access_token" +
                 $"?client_id={_options.ClientId}" +
@@ -36,6 +37,7 @@ namespace FidoDino.Infrastructure.Auth
             using var tokenDoc = JsonDocument.Parse(tokenJson);
             var accessToken = tokenDoc.RootElement.GetProperty("access_token").GetString();
 
+            // Gọi API Facebook để lấy thông tin người dùng
             var userResponse = await _httpClient.GetAsync(
                 $"https://graph.facebook.com/me" +
                 $"?fields=id,name,email" +

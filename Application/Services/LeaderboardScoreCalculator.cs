@@ -9,6 +9,7 @@ namespace FidoDino.Application.Services
             if (state == null)
                 throw new ArgumentNullException(nameof(state));
 
+            // Đảm bảo thời điểm AchievedAt luôn ở dạng UTC để xử lý và so sánh thống nhất
             var achievedUtc = state.AchievedAt.Kind == DateTimeKind.Utc
                 ? state.AchievedAt
                 : state.AchievedAt.ToUniversalTime();

@@ -29,9 +29,7 @@ namespace FidoDino.Application.Services
             _multiplexer = multiplexer;
         }
 
-        /// <summary>
-        /// Bắt đầu lượt chơi, trả về loại ice và số lần lắc cho user.
-        /// </summary>
+        // Bắt đầu lượt chơi, trả về loại ice và số lần lắc cho user.
         public async Task<(IceResultDto ice, int shakeCount)> StartTurnAsync(Guid userId)
         {
             var iceList = await _iceCache.GetAllIcesAsync();
@@ -53,9 +51,8 @@ namespace FidoDino.Application.Services
 
             return (ice, shakeCount);
         }
-        /// <summary>
-        /// Kết thúc lượt chơi, trả về phần thưởng và điểm số đạt được.
-        /// </summary>
+
+        // Kết thúc lượt chơi, trả về phần thưởng và điểm số đạt được.
         public async Task<(RewardResultDto reward, int earnedScore)> EndTurnAsync(Guid userId, Guid iceId)
         {
             var iceRewards = await _iceRewardCache.GetIceRewardsAsync(iceId);
@@ -94,9 +91,7 @@ namespace FidoDino.Application.Services
             return (reward, earnedScore);
         }
 
-        /// <summary>
-        /// Chọn ngẫu nhiên một ice dựa trên xác suất.
-        /// </summary>
+        // Chọn ngẫu nhiên một ice dựa trên xác suất.
         private IceResultDto RandomIceByProbability(List<IceResultDto> iceList)
         {
             if (!iceList.Any())
@@ -115,9 +110,7 @@ namespace FidoDino.Application.Services
             return iceList.Last();
         }
 
-        /// <summary>
-        /// Chọn ngẫu nhiên một phần thưởng dựa trên xác suất.
-        /// </summary>
+        // Chọn ngẫu nhiên một phần thưởng dựa trên xác suất.
         private IceRewardRedisDto RandomRewardByProbability(List<IceRewardRedisDto> rewards)
         {
             if (!rewards.Any())

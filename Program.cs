@@ -185,11 +185,12 @@ builder.Services.AddScoped<IOAuthClient, GoogleOAuthClient>();
 builder.Services.AddScoped<IOAuthClient, FacebookOAuthClient>();
 builder.Services.AddScoped<IOAuthService, OAuthService>();
 
-// EffectCacheService DI
+// CacheService DI
 builder.Services.AddScoped<EffectCacheService>();
 builder.Services.AddScoped<IceCacheService>();
 builder.Services.AddScoped<IceRewardCacheService>();
 builder.Services.AddScoped<RewardCacheService>();
+builder.Services.AddScoped<SystemStatusRedisLoader>();
 
 // FidoDinoDbContext DI
 builder.Services.AddScoped<FidoDinoDbContext>();
@@ -239,10 +240,8 @@ builder.Services.AddHangfire(x =>
 #pragma warning restore CS0618 // Type or member is obsolete
 builder.Services.AddHangfireServer();
 
-// <summary>
-// Build ứng dụng web từ cấu hình đã thiết lập.
-// </summary>
 var app = builder.Build();
+
 // Map SignalR Hub endpoint
 app.MapHub<FidoDino.API.Hubs.LeaderboardHub>("/leaderboardHub");
 

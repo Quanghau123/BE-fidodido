@@ -61,5 +61,11 @@ namespace FidoDino.Application.Services
 
             await _leaderboardRepository.ResetAsync(timeRange, now);
         }
+
+        public async Task<List<(LeaderboardSnapshot Snapshot, string UserName)>> GetSnapshotsAsync(TimeRangeType timeRange, DateTime forDate, int topN)
+        {
+            var timeKey = LeaderboardTimeKeyHelper.GetTimeKey(timeRange, forDate);
+            return await _snapshotRepository.GetTopAsync(timeRange, timeKey, topN);
+        }
     }
 }

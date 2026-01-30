@@ -35,9 +35,6 @@ namespace FidoDino.Application.Services
             _authTokenService = authTokenService;
         }
 
-        /// <summary>
-        /// Xử lý đăng nhập người dùng, kiểm tra email, mật khẩu và trạng thái tài khoản.
-        /// </summary>
         public async Task<LoginResponseDto> HandleUserLoginAsync(LoginRequest request)
         {
             var user = await _context.Users
@@ -52,9 +49,8 @@ namespace FidoDino.Application.Services
 
             return await _authTokenService.IssueTokenAsync(user);
         }
-        /// <summary>
-        /// Làm mới access token bằng refresh token, đồng thời thu hồi refresh token cũ và cấp refresh token mới.
-        /// </summary>
+
+        /// Làm mới access token bằng refresh token, đồng thời thu hồi refresh token cũ và cấp refresh token mới
         public async Task<TokenResponseDto> RefreshTokenAsync(string refreshToken)
         {
             var dbToken = await _context.RefreshTokens
@@ -90,9 +86,8 @@ namespace FidoDino.Application.Services
                 RefreshToken = newRefreshToken.Token
             };
         }
-        /// <summary>
+
         /// Thu hồi (revoke) tất cả refresh token còn hiệu lực của người dùng khi đăng xuất.
-        /// </summary>
         public async Task LogoutAsync(Guid userId)
         {
             var tokens = await _context.RefreshTokens
@@ -104,9 +99,8 @@ namespace FidoDino.Application.Services
 
             await _context.SaveChangesAsync();
         }
-        /// <summary>
+
         /// Tạo refresh token mới cho người dùng với thời hạn 7 ngày.
-        /// </summary>
         private static RefreshToken CreateRefreshToken(Guid userId)
         {
             return new RefreshToken
@@ -119,9 +113,6 @@ namespace FidoDino.Application.Services
             };
         }
 
-        /// <summary>
-        /// Gửi email chứa link đặt lại mật khẩu cho người dùng, kiểm tra chống spam gửi mail.
-        /// </summary>
         public async Task SendPasswordResetLinkAsync(string email)
         {
             var user = await _context.Users
@@ -145,7 +136,7 @@ namespace FidoDino.Application.Services
 
             await _context.PasswordResetTokens
                 .Where(t => t.UserId == user.UserId && t.UsedAt == null)
-                // Cập nhật hàng loạt (bulk update) trực tiếp trên database mà không cần load các entity về bộ nhớ.
+                // Cập nhật hàng loạt (bulk update) trực tiếp trên database mà không cần load các entity về bộ nhớ
                 .ExecuteUpdateAsync(t =>
                     t.SetProperty(x => x.UsedAt, DateTime.UtcNow));
 

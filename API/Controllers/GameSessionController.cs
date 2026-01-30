@@ -15,10 +15,8 @@ namespace FidoDino.API.Controllers
             _gameSessionService = gameSessionService;
         }
 
-        /// <summary>
-        /// Lấy phiên chơi đang hoạt động của người dùng.
-        /// Dùng để khôi phục phiên khi người chơi reload hoặc quay lại game.
-        /// </summary>
+        // Lấy phiên chơi đang hoạt động của người dùng.
+        // Dùng để khôi phục phiên khi người chơi reload hoặc quay lại game.
         [HttpGet("active")]
         public async Task<ActionResult<GameSession?>> GetActiveSession([FromQuery] Guid userId)
         {
@@ -30,9 +28,6 @@ namespace FidoDino.API.Controllers
             return Ok(session);
         }
 
-        /// <summary>
-        /// Bắt đầu session
-        /// </summary>
         [HttpPost("start")]
         public async Task<ActionResult<GameSessionDto>> StartSession([FromQuery] Guid userId)
         {
@@ -40,9 +35,6 @@ namespace FidoDino.API.Controllers
             return Ok(session);
         }
 
-        /// <summary>
-        /// Kết thúc session
-        /// </summary>
         [HttpPost("end")]
         public async Task<IActionResult> EndSession([FromQuery] Guid sessionId)
         {

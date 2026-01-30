@@ -21,9 +21,7 @@ namespace FidoDino.Application.Services
             _db = db;
         }
 
-        /// <summary>
-        /// Update điểm người chơi và sync lên Redis leaderboard
-        /// </summary>
+        // Update điểm người chơi và sync lên Redis leaderboard
         public async Task UpdateUserScoreAsync(
             LeaderboardState state,
             TimeRangeType timeRange,
@@ -35,12 +33,11 @@ namespace FidoDino.Application.Services
             if (!Enum.IsDefined(typeof(TimeRangeType), timeRange))
                 throw new ArgumentException("TimeRange is required");
 
-            // Không cần kiểm tra timeKey nữa, thay bằng date
             if (date == default)
                 throw new ArgumentException("Date is required");
 
             var compositeScore = LeaderboardScoreCalculator.Calculate(state);
-            var realScore = state.TotalScore; // hoặc trường điểm thật phù hợp
+            var realScore = state.TotalScore;
             await _leaderboardRepository.UpdateScoreAsync(
                 timeRange,
                 date,
@@ -49,9 +46,7 @@ namespace FidoDino.Application.Services
                 realScore);
         }
 
-        /// <summary>
-        /// Lấy top leaderboard theo thời gian
-        /// </summary>
+        // Lấy top leaderboard theo thời gian
         public async Task<IEnumerable<LeaderboardUserDto>> GetTopAsync(
             TimeRangeType timeRange,
             DateTime date,
@@ -90,9 +85,7 @@ namespace FidoDino.Application.Services
             });
         }
 
-        /// <summary>
-        /// Lấy thứ hạng của user trong leaderboard
-        /// </summary>
+        // Lấy thứ hạng của user trong leaderboard
         public async Task<int> GetUserRankAsync(
             Guid userId,
             TimeRangeType timeRange,

@@ -19,9 +19,6 @@ namespace FidoDino.WebApi.Controllers
             _userService = userService;
         }
 
-        /// <summary>
-        /// Đăng ký user
-        /// </summary>
         [HttpPost]
         [Authorize(Policy = Permissions.User_Create)]
         public async Task<IActionResult> Register([FromBody] CreateUserRequest data)
@@ -30,9 +27,6 @@ namespace FidoDino.WebApi.Controllers
             return Ok(new ApiResponse<object>(true, "User created successfully.", result));
         }
 
-        /// <summary>
-        /// Lấy danh sách user
-        /// </summary>
         [HttpGet]
         [Authorize(Policy = Permissions.User_View)]
         public async Task<IActionResult> GetAllUsers()
@@ -41,9 +35,6 @@ namespace FidoDino.WebApi.Controllers
             return Ok(new ApiResponse<object>(true, "Get users successfully.", users));
         }
 
-        /// <summary>
-        /// Cập nhật user
-        /// </summary>
         [HttpPut("{userId}")]
         [Authorize(Policy = Permissions.User_Update)]
         public async Task<IActionResult> UpdateUser(Guid userId, [FromBody] UpdateUserRequest data)
@@ -52,9 +43,6 @@ namespace FidoDino.WebApi.Controllers
             return Ok(new ApiResponse<object>(true, "Update success.", result));
         }
 
-        /// <summary>
-        /// Xóa user
-        /// </summary>
         [HttpDelete("{userId}")]
         [Authorize(Policy = Permissions.User_Delete)]
         public async Task<IActionResult> DeleteUser(Guid userId)
@@ -63,9 +51,6 @@ namespace FidoDino.WebApi.Controllers
             return Ok(new ApiResponse<object>(true, "Delete success.", result));
         }
 
-        /// <summary>
-        /// Export user
-        /// </summary>
         [HttpGet("export")]
         [Authorize(Policy = Permissions.User_Export)]
         public async Task<IActionResult> ExportUsersToStream([FromQuery] ExportUserRequest request, CancellationToken ct)

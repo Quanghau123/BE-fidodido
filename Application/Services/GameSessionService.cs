@@ -41,9 +41,7 @@ namespace FidoDino.Application.Services
             _defaultTimeRange = parsed;
         }
 
-        /// <summary>
-        /// Lấy phiên chơi đang hoạt động của người dùng (Redis cache-first, DB là source of truth).
-        /// </summary>
+        // Lấy phiên chơi đang hoạt động của người dùng
         public async Task<GameSession?> GetActiveSessionAsync(Guid userId)
         {
             if (userId == Guid.Empty)
@@ -63,11 +61,11 @@ namespace FidoDino.Application.Services
                 }
                 else
                 {
-                    return cachedSession; // Active thật
+                    return cachedSession; 
                 }
             }
 
-            // Fallback DB (truth)
+            // Fallback DB 
             var session = await _sessionRepository.GetActiveSessionByUserIdAsync(userId);
             if (session == null)
                 return null;

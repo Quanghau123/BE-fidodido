@@ -42,11 +42,23 @@ namespace FidoDino.API.Controllers
         /// </summary>
         [HttpGet("{provider}/callback")]
         public async Task<IActionResult> Callback(
-            string provider,
-            [FromQuery] string code)
+    string provider,
+    [FromQuery] string code)
         {
             var result = await _oauthService.LoginAsync(provider, code);
-            return Ok(result);
+
+            // Sau khi xử lý xong, redirect về FE kèm accessToken/refreshToken trên URL
+            var baseUrl = _configuration["Frontend:BaseUrl"];
+            string frontendUrl;
+            if (result.AccessToken != null && result.RefreshToken != null)
+            {
+                frontendUrl = $"{baseUrl}/oauth-callback/{provider}?accessToken={Uri.EscapeDataString(result.AccessToken)}&refreshToken={Uri.EscapeDataString(result.RefreshToken)}";
+            }
+            else
+            {
+                frontendUrl = $"{baseUrl}/oauth-callback/{provider}?error={Uri.EscapeDataString("OAuth failed")}";
+            }
+            return Redirect(frontendUrl);
         }
 
         private string BuildGoogleLoginUrl()

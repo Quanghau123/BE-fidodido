@@ -53,6 +53,7 @@ namespace FidoDino.Infrastructure.Security
                 handler.CreateToken(tokenDescriptor));
         }
 
+        // Giải mã và xác thực JWT token, trả về ClaimsPrincipal chứa thông tin user
         public ClaimsPrincipal GetPrincipalFromToken(string token, bool validateLifetime = true)
         {
             var handler = new JwtSecurityTokenHandler();

@@ -17,9 +17,7 @@ namespace FidoDino.Application.Services
             _db = db;
         }
 
-        /// <summary>
-        /// Tạo snapshot (bản lưu) cho một phiên chơi (GameSession) tại thời điểm hiện tại.
-        /// </summary>
+        // Tạo snapshot (bản lưu) cho một phiên chơi (GameSession) tại thời điểm hiện tại.
         public async Task SnapshotGameSessionAsync(Guid sessionId)
         {
             if (sessionId == Guid.Empty)
@@ -41,9 +39,7 @@ namespace FidoDino.Application.Services
             await _db.SaveChangesAsync();
         }
 
-        /// <summary>
-        /// Tạo snapshot (bản lưu) cho bảng xếp hạng (Leaderboard) theo khoảng thời gian và key thời gian.
-        /// </summary>
+        // Tạo snapshot (bản lưu) cho bảng xếp hạng (Leaderboard) theo khoảng thời gian và key thời gian.
         public async Task SnapshotLeaderboardAsync(TimeRangeType timeRange, string timeKey)
         {
             if (string.IsNullOrWhiteSpace(timeKey))

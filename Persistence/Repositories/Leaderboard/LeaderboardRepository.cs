@@ -35,6 +35,7 @@ namespace FidoDino.Infrastructure.Repositories
         public async Task<IEnumerable<(Guid userId, long compositeScore, int realScore)>> GetTopAsync(TimeRangeType timeRange, DateTime date, int count)
         {
             var key = BuildKey(timeRange, date);
+            // Lấy top `count` phần tử điểm cao nhất từ Sorted Set (xếp hạng giảm dần)
             var entries = await _redis.SortedSetRangeByRankWithScoresAsync(key, 0, count - 1, Order.Descending);
             var userIds = entries.Select(e => e.Element!.ToString()).ToArray();
             var realScores = userIds.Length > 0
@@ -43,9 +44,14 @@ namespace FidoDino.Infrastructure.Repositories
             var result = new List<(Guid userId, long compositeScore, int realScore)>();
             for (int i = 0; i < entries.Length; i++)
             {
+                // Lấy userId từ Redis SortedSet entry và parse sang Guid
                 var userId = Guid.Parse(entries[i].Element!);
                 var compositeScore = (long)entries[i].Score;
                 int realScore = 0;
+
+                // Nếu mảng realScores có phần tử tương ứng,
+                // và giá trị không null,
+                // và parse được sang int
                 if (realScores.Length > i && realScores[i].HasValue && int.TryParse(realScores[i], out var parsedScore))
                     realScore = parsedScore;
                 result.Add((userId, compositeScore, realScore));
