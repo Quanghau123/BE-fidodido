@@ -50,7 +50,7 @@ namespace FidoDino.Application.Services
             return await _authTokenService.IssueTokenAsync(user);
         }
 
-        /// Làm mới access token bằng refresh token, đồng thời thu hồi refresh token cũ và cấp refresh token mới
+        // Làm mới access token bằng refresh token, đồng thời thu hồi refresh token cũ và cấp refresh token mới
         public async Task<TokenResponseDto> RefreshTokenAsync(string refreshToken)
         {
             var dbToken = await _context.RefreshTokens
@@ -140,8 +140,9 @@ namespace FidoDino.Application.Services
                 .ExecuteUpdateAsync(t =>
                     t.SetProperty(x => x.UsedAt, DateTime.UtcNow));
 
+
             var rawToken = GenerateResetToken();
-            var tokenHash = BCrypt.Net.BCrypt.HashPassword(rawToken);
+            var tokenHash = HashTokenSha256(rawToken);
 
             var resetToken = new PasswordResetToken
             {
@@ -179,37 +180,43 @@ namespace FidoDino.Application.Services
             }
         }
 
-        /// <summary>
-        /// Đặt lại mật khẩu mới cho người dùng sau khi xác thực token hợp lệ.
-        /// </summary>
+        // Đặt lại mật khẩu mới cho người dùng sau khi xác thực token hợp lệ.
         public async Task ResetPasswordAsync(ResetPasswordRequest request)
         {
-            var resetToken = await _context.PasswordResetTokens
+            var resetTokens = await _context.PasswordResetTokens
                 .Include(t => t.User)
-                .FirstOrDefaultAsync(t =>
-                    t.UserId == request.UserId &&
-                    t.UsedAt == null);
+                .Where(t => t.UserId == request.UserId && t.UsedAt == null)
+                .ToListAsync();
 
-            if (resetToken == null)
-                throw new NotFoundException("Reset token not found");
+            var hashedInputToken = HashTokenSha256(request.Token);
+            var matchedToken = resetTokens.FirstOrDefault(t => t.TokenHash == hashedInputToken);
 
-            if (resetToken.ExpiresAt < DateTime.UtcNow)
-                throw new ValidationException("Reset token expired");
-
-            if (!BCrypt.Net.BCrypt.Verify(request.Token, resetToken.TokenHash))
+            if (matchedToken == null)
                 throw new ValidationException("Invalid reset token");
 
-            resetToken.User.Password =
+            if (matchedToken.ExpiresAt < DateTime.UtcNow)
+                throw new ValidationException("Reset token expired");
+
+            matchedToken.User.Password =
                 BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
 
-            resetToken.UsedAt = DateTime.UtcNow;
+            // Đánh dấu tất cả token chưa dùng là UsedAt
+            foreach (var t in resetTokens)
+                t.UsedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
         }
 
-        /// <summary>
-        /// Sinh chuỗi token ngẫu nhiên dùng cho đặt lại mật khẩu.
-        /// </summary>
+        // Hash token bằng SHA-256, trả về dạng hex string
+        private static string HashTokenSha256(string token)
+        {
+            using var sha = SHA256.Create();
+            var bytes = System.Text.Encoding.UTF8.GetBytes(token);
+            var hash = sha.ComputeHash(bytes);
+            return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+        }
+
+        // Sinh chuỗi token ngẫu nhiên dùng cho đặt lại mật khẩu.
         private static string GenerateResetToken()
         {
             var bytes = RandomNumberGenerator.GetBytes(32);
