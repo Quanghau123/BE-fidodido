@@ -16,6 +16,34 @@ namespace FidoDino.Application.Services
             _cache = cache;
         }
 
+        public async Task<List<ActiveEffectDto>> GetAllActiveEffectsAsync(Guid userId)
+        {
+            var effects = new List<ActiveEffectDto>();
+
+            // Timed effects (không gồm BlockPlay)
+            var timedEffects = await GetActiveTimedEffectsAsync(userId);
+            effects.AddRange(timedEffects.Select(e => new ActiveEffectDto
+            {
+                EffectType = e.EffectType.ToString(),
+                Duration = e.RemainingSeconds
+            }));
+
+            // BlockPlay
+            if (await HasEffectAsync(userId, EffectType.BlockPlay))
+            {
+                var duration = await GetEffectDurationAsync(userId, EffectType.BlockPlay);
+                effects.Add(new ActiveEffectDto { EffectType = "BlockPlay", Duration = duration });
+            }
+
+            // Utility
+            var utilityCount = await GetUtilityRemainAsync(userId);
+            if (utilityCount > 0)
+            {
+                effects.Add(new ActiveEffectDto { EffectType = "AutoBreakIce", Duration = utilityCount });
+            }
+
+            return effects;
+        }
 
         public async Task<bool> HasEffectAsync(Guid userId, EffectType effectType)
         {

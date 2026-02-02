@@ -7,6 +7,7 @@ namespace FidoDino.Application.Interfaces
 {
     public interface IEffectService
     {
+        Task<List<ActiveEffectDto>> GetAllActiveEffectsAsync(Guid userId);
         Task<bool> HasEffectAsync(Guid userId, EffectType effectType);
         Task SetEffectAsync(Guid userId, EffectType effectType, int durationSeconds);
         Task RemoveEffectAsync(Guid userId, EffectType effectType);
