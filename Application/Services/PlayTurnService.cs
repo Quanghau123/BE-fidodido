@@ -56,13 +56,16 @@ namespace FidoDino.Application.Services
                 if (!cachedSessionId.HasValue || cachedSessionId != sessionId.ToString())
                     throw new NotFoundException("No active session");
 
+                // Cập nhật hiệu ứng timed khi bắt đầu lượt chơi
+                Console.WriteLine($"[LOG][PlayTurnService] StartTurnAsync: userId={userId}");
+                await _effectService.UpdateTimedEffectsOnStartTurnAsync(userId);
+
                 if (await _effectService.HasEffectAsync(userId, EffectType.BlockPlay))
                     throw new ForbiddenException("User is blocked");
 
                 var (ice, shakeCount) = await _gamePlayService.StartTurnAsync(userId);
 
                 bool hasDoubleScore = await _effectService.HasEffectAsync(userId, EffectType.DoubleScore);
-
                 bool hasSpeedBoost = await _effectService.HasEffectAsync(userId, EffectType.SpeedBoost);
 
                 if (hasSpeedBoost)
@@ -76,7 +79,6 @@ namespace FidoDino.Application.Services
                     IceId = ice.IceId,
                     ShakeCount = shakeCount,
                     StartedAt = DateTime.UtcNow,
-
                     DoubleScore = hasDoubleScore,
                     SpeedBoost = hasSpeedBoost
                 };
@@ -110,6 +112,14 @@ namespace FidoDino.Application.Services
                 throw new NotFoundException("No active turn");
 
             var turn = JsonSerializer.Deserialize<TurnCacheDto>(turnJson!)!;
+
+
+            // Tính thời gian thực sự chơi
+            var playDurationSeconds = (int)(DateTime.UtcNow - turn.StartedAt).TotalSeconds;
+
+            // Cập nhật hiệu ứng timed khi kết thúc lượt chơi
+            Console.WriteLine($"[LOG][PlayTurnService] EndTurnAsync: userId={userId}, playDurationSeconds={playDurationSeconds}");
+            await _effectService.UpdateTimedEffectsOnEndTurnAsync(userId, playDurationSeconds);
 
             var (reward, earnedScore) = await _gamePlayService.EndTurnAsync(userId, turn.IceId);
             if (turn.DoubleScore)
@@ -185,16 +195,8 @@ namespace FidoDino.Application.Services
                 }
                 else
                 {
-                    switch (effectType)
-                    {
-                        case EffectType.BlockPlay:
-                        case EffectType.SpeedBoost:
-                        case EffectType.DoubleScore:
-                            await _effectService.SetEffectAsync(userId, effectType, 60);
-                            break;
-                        default:
-                            break;
-                    }
+                    // Cộng dồn thời gian cho timed effect (ví dụ: 60s)
+                    await _effectService.AddOrUpdateTimedEffectAsync(userId, effectType, 60);
                     // lấy thời gian còn lại của effect, nhưng có cơ chế retry vì Redis có thể chưa kịp ghi xong
                     int retry = 0; //số lần đã thử
                     const int maxRetry = 3;

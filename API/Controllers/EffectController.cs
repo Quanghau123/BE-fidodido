@@ -18,20 +18,25 @@ namespace FidoDino.API.Controllers
         [HttpGet("active")]
         public async Task<IActionResult> GetActiveEffects([FromQuery] Guid userId, [FromServices] StackExchange.Redis.IConnectionMultiplexer redis)
         {
-            var db = redis.GetDatabase();
-            var server = redis.GetServer(redis.GetEndPoints()[0]);
-            var pattern = $"game:effect:{userId}:*";
-            var keys = server.Keys(pattern: pattern).ToArray();
             var effects = new List<object>();
-            foreach (var key in keys)
+
+            // Lấy timed effects (không bao gồm BlockPlay)
+            var timedEffects = await _effectService.GetActiveTimedEffectsAsync(userId);
+            foreach (var effect in timedEffects)
             {
-                var effectType = key.ToString().Split(':').Last();
-                var ttl = await db.KeyTimeToLiveAsync(key);
-                effects.Add(new { EffectType = effectType, Duration = ttl?.TotalSeconds ?? 0 });
+                effects.Add(new { EffectType = effect.EffectType.ToString(), Duration = effect.RemainingSeconds });
             }
 
-            var utilityVal = await db.StringGetAsync($"effect:utility:{userId}");
-            if (utilityVal.HasValue && int.TryParse(utilityVal, out var utilityCount) && utilityCount > 0)
+            // Lấy BlockPlay nếu còn hiệu lực
+            if (await _effectService.HasEffectAsync(userId, EffectType.BlockPlay))
+            {
+                var duration = await _effectService.GetEffectDurationAsync(userId, EffectType.BlockPlay);
+                effects.Add(new { EffectType = "BlockPlay", Duration = duration });
+            }
+
+            // Lấy utility effect (AutoBreakIce)
+            var utilityCount = await _effectService.GetUtilityRemainAsync(userId);
+            if (utilityCount > 0)
             {
                 effects.Add(new { EffectType = "AutoBreakIce", Duration = utilityCount });
             }

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FidoDino.Application.DTOs.Game;
 using StackExchange.Redis;
 
@@ -10,6 +11,20 @@ namespace FidoDino.Infrastructure.Redis
         public EffectCacheService(IConnectionMultiplexer redis)
         {
             _redis = redis.GetDatabase();
+        }
+
+        // ===================== TIMED EFFECTS (NO TTL) =====================
+        public async Task<List<TimedEffectStateDto>> GetTimedEffectsAsync(Guid userId)
+        {
+            var json = await _redis.StringGetAsync($"game:timed_effects:{userId}");
+            if (!json.HasValue) return new List<TimedEffectStateDto>();
+            return JsonSerializer.Deserialize<List<TimedEffectStateDto>>(json!) ?? new List<TimedEffectStateDto>();
+        }
+
+        public Task SaveTimedEffectsAsync(Guid userId, List<TimedEffectStateDto> effects)
+        {
+            var json = JsonSerializer.Serialize(effects);
+            return _redis.StringSetAsync($"game:timed_effects:{userId}", json);
         }
 
         // Lấy effect từ Redis theo EffectId
@@ -29,23 +44,25 @@ namespace FidoDino.Infrastructure.Redis
 
         public Task SetEffect(Guid userId, string effectType, int seconds)
         {
-            return _redis.StringSetAsync(
-                $"game:effect:{userId}:{effectType}",
-                1,
-                TimeSpan.FromSeconds(seconds)
-            );
+            // Deprecated for timed effect, use SaveTimedEffectsAsync instead
+            return Task.CompletedTask;
         }
 
         public Task RemoveEffect(Guid userId, string effectType)
         {
-            return _redis.KeyDeleteAsync($"game:effect:{userId}:{effectType}");
+            // Deprecated for timed effect, use SaveTimedEffectsAsync instead
+            return Task.CompletedTask;
         }
 
         public async Task<int?> GetEffectRemainSeconds(Guid userId, string effectType)
         {
-            var ttl = await _redis.KeyTimeToLiveAsync($"game:effect:{userId}:{effectType}");
-            return ttl?.Seconds;
+            // Deprecated for timed effect, use GetTimedEffectsAsync instead
+            var effects = await GetTimedEffectsAsync(userId);
+            var effect = effects.FirstOrDefault(e => e.EffectType.ToString() == effectType);
+            return effect?.RemainingSeconds;
         }
+
+        // ...existing code...
 
         /* ===================== UTILITY ===================== */
 

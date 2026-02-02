@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using FidoDino.Application.DTOs.Game;
 using FidoDino.Domain.Enums.Game;
 
 namespace FidoDino.Application.Interfaces
@@ -13,5 +14,9 @@ namespace FidoDino.Application.Interfaces
         Task ConsumeUtilityAsync(Guid userId);
         Task SetUtilityAsync(Guid userId, int count);
         Task<int> GetUtilityRemainAsync(Guid userId);
+        Task UpdateTimedEffectsOnStartTurnAsync(Guid userId);
+        Task UpdateTimedEffectsOnEndTurnAsync(Guid userId, int playDurationSeconds);
+        Task AddOrUpdateTimedEffectAsync(Guid userId, EffectType effectType, int secondsToAdd);
+        Task<List<TimedEffectStateDto>> GetActiveTimedEffectsAsync(Guid userId);
     }
 }

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using FidoDino.Application.DTOs.Game;
 using FidoDino.Application.Interfaces;
 using FidoDino.Common.Exceptions;
 using FidoDino.Domain.Enums.Game;
@@ -15,6 +16,7 @@ namespace FidoDino.Application.Services
             _cache = cache;
         }
 
+
         public async Task<bool> HasEffectAsync(Guid userId, EffectType effectType)
         {
             if (userId == Guid.Empty)
@@ -22,7 +24,23 @@ namespace FidoDino.Application.Services
             if (effectType == EffectType.None)
                 throw new ArgumentException("EffectType is required");
 
-            return await _cache.HasEffect(userId, effectType.ToString());
+            if (effectType == EffectType.AutoBreakIce)
+                return await _cache.GetUtilityRemain(userId) > 0;
+
+            // BlockPlay: dùng TTL Redis, không lưu vào timed effect chung
+            if (effectType == EffectType.BlockPlay)
+                return await _cache.HasEffect(userId, effectType.ToString());
+
+            // Timed effect khác
+            var effects = await _cache.GetTimedEffectsAsync(userId);
+            var effect = effects.FirstOrDefault(e => e.EffectType == effectType);
+            if (effect == null) return false;
+            if (effect.LastActiveAt.HasValue)
+            {
+                var elapsed = (int)(DateTime.UtcNow - effect.LastActiveAt.Value).TotalSeconds;
+                effect.RemainingSeconds = Math.Max(0, effect.RemainingSeconds - elapsed);
+            }
+            return effect.RemainingSeconds > 0;
         }
 
         public async Task SetEffectAsync(Guid userId, EffectType effectType, int durationSeconds)
@@ -34,7 +52,37 @@ namespace FidoDino.Application.Services
             if (durationSeconds <= 0)
                 throw new ValidationException("Duration must be greater than 0");
 
-            await _cache.SetEffect(userId, effectType.ToString(), durationSeconds);
+            if (effectType == EffectType.AutoBreakIce)
+            {
+                await _cache.SetUtilityRemain(userId, durationSeconds);
+                return;
+            }
+
+            // BlockPlay: dùng TTL Redis
+            if (effectType == EffectType.BlockPlay)
+            {
+                await _cache.SetEffect(userId, effectType.ToString(), durationSeconds);
+                return;
+            }
+
+            // Timed effect khác
+            var effects = await _cache.GetTimedEffectsAsync(userId);
+            var effect = effects.FirstOrDefault(e => e.EffectType == effectType);
+            if (effect != null)
+            {
+                effect.RemainingSeconds = durationSeconds;
+                effect.LastActiveAt = null;
+            }
+            else
+            {
+                effects.Add(new TimedEffectStateDto
+                {
+                    EffectType = effectType,
+                    RemainingSeconds = durationSeconds,
+                    LastActiveAt = null
+                });
+            }
+            await _cache.SaveTimedEffectsAsync(userId, effects);
         }
 
         public async Task RemoveEffectAsync(Guid userId, EffectType effectType)
@@ -44,7 +92,22 @@ namespace FidoDino.Application.Services
             if (effectType == EffectType.None)
                 throw new ArgumentException("EffectType is required");
 
-            await _cache.RemoveEffect(userId, effectType.ToString());
+            if (effectType == EffectType.AutoBreakIce)
+            {
+                await _cache.SetUtilityRemain(userId, 0);
+                return;
+            }
+
+            // BlockPlay: xóa TTL Redis
+            if (effectType == EffectType.BlockPlay)
+            {
+                await _cache.RemoveEffect(userId, effectType.ToString());
+                return;
+            }
+
+            var effects = await _cache.GetTimedEffectsAsync(userId);
+            effects.RemoveAll(e => e.EffectType == effectType);
+            await _cache.SaveTimedEffectsAsync(userId, effects);
         }
 
         public async Task<int> GetEffectDurationAsync(Guid userId, EffectType effectType)
@@ -54,11 +117,44 @@ namespace FidoDino.Application.Services
             if (effectType == EffectType.None)
                 throw new ArgumentException("EffectType is required");
 
-            var remain = await _cache.GetEffectRemainSeconds(userId, effectType.ToString());
-            if (remain == null)
-                throw new NotFoundException("Effect not found for user");
+            if (effectType == EffectType.AutoBreakIce)
+                return await _cache.GetUtilityRemain(userId);
 
-            return remain.Value;
+            // BlockPlay: lấy TTL Redis
+            if (effectType == EffectType.BlockPlay)
+            {
+                var ttl = await _cache.GetEffectRemainSeconds(userId, effectType.ToString());
+                if (ttl == null)
+                    throw new NotFoundException("Effect not found for user");
+                return ttl.Value;
+            }
+
+            var effects = await _cache.GetTimedEffectsAsync(userId);
+            var effect = effects.FirstOrDefault(e => e.EffectType == effectType);
+            if (effect == null)
+                throw new NotFoundException("Effect not found for user");
+            if (effect.LastActiveAt.HasValue)
+            {
+                var elapsed = (int)(DateTime.UtcNow - effect.LastActiveAt.Value).TotalSeconds;
+                effect.RemainingSeconds = Math.Max(0, effect.RemainingSeconds - elapsed);
+            }
+            return effect.RemainingSeconds;
+        }
+
+        public async Task<List<TimedEffectStateDto>> GetActiveTimedEffectsAsync(Guid userId)
+        {
+            var effects = await _cache.GetTimedEffectsAsync(userId);
+            var now = DateTime.UtcNow;
+            foreach (var effect in effects)
+            {
+                if (effect.LastActiveAt.HasValue)
+                {
+                    var elapsed = (int)(now - effect.LastActiveAt.Value).TotalSeconds;
+                    effect.RemainingSeconds = Math.Max(0, effect.RemainingSeconds - elapsed);
+                }
+            }
+            // Không trả về BlockPlay trong danh sách timed effect
+            return effects.Where(e => e.RemainingSeconds > 0 && e.EffectType != EffectType.BlockPlay).ToList();
         }
 
         public async Task<int> GetUtilityRemainAsync(Guid userId)
@@ -88,6 +184,71 @@ namespace FidoDino.Application.Services
                 throw new ValidationException("Utility count must be greater than 0");
 
             await _cache.SetUtilityRemain(userId, count);
+        }
+
+        public async Task UpdateTimedEffectsOnStartTurnAsync(Guid userId)
+        {
+            Console.WriteLine($"[LOG][EffectService] UpdateTimedEffectsOnStartTurnAsync called for userId={userId}");
+            var effects = await _cache.GetTimedEffectsAsync(userId);
+            Console.WriteLine($"[LOG][EffectService] Timed effects count: {effects.Count}");
+            var now = DateTime.UtcNow;
+            foreach (var effect in effects)
+            {
+                if (effect.LastActiveAt.HasValue)
+                {
+                    var elapsed = (int)(now - effect.LastActiveAt.Value).TotalSeconds;
+                    Console.WriteLine($"[LOG][StartTurn] Effect {effect.EffectType} elapsed: {elapsed}, before: {effect.RemainingSeconds}");
+                    effect.RemainingSeconds = Math.Max(0, effect.RemainingSeconds - elapsed);
+                    Console.WriteLine($"[LOG][StartTurn] Effect {effect.EffectType} after: {effect.RemainingSeconds}");
+                }
+                effect.LastActiveAt = now;
+            }
+            await _cache.SaveTimedEffectsAsync(userId, effects.Where(e => e.RemainingSeconds > 0).ToList());
+        }
+
+        public async Task UpdateTimedEffectsOnEndTurnAsync(Guid userId, int playDurationSeconds)
+        {
+            var effects = await _cache.GetTimedEffectsAsync(userId);
+            Console.WriteLine($"[LOG][EndTurn] playDurationSeconds: {playDurationSeconds}");
+            foreach (var effect in effects)
+            {
+                if (effect.LastActiveAt.HasValue)
+                {
+                    Console.WriteLine($"[LOG][EndTurn] Effect {effect.EffectType} before: {effect.RemainingSeconds}");
+                    effect.RemainingSeconds = Math.Max(0, effect.RemainingSeconds - playDurationSeconds);
+                    Console.WriteLine($"[LOG][EndTurn] Effect {effect.EffectType} after: {effect.RemainingSeconds}");
+                }
+                effect.LastActiveAt = null;
+            }
+            await _cache.SaveTimedEffectsAsync(userId, effects.Where(e => e.RemainingSeconds > 0).ToList());
+        }
+
+        public async Task AddOrUpdateTimedEffectAsync(Guid userId, EffectType effectType, int secondsToAdd)
+        {
+            // BlockPlay: cộng dồn TTL Redis
+            if (effectType == EffectType.BlockPlay)
+            {
+                var ttl = await _cache.GetEffectRemainSeconds(userId, effectType.ToString()) ?? 0;
+                await _cache.SetEffect(userId, effectType.ToString(), ttl + secondsToAdd);
+                return;
+            }
+
+            var effects = await _cache.GetTimedEffectsAsync(userId);
+            var effect = effects.FirstOrDefault(e => e.EffectType == effectType);
+            if (effect != null)
+            {
+                effect.RemainingSeconds += secondsToAdd;
+            }
+            else
+            {
+                effects.Add(new TimedEffectStateDto
+                {
+                    EffectType = effectType,
+                    RemainingSeconds = secondsToAdd,
+                    LastActiveAt = null
+                });
+            }
+            await _cache.SaveTimedEffectsAsync(userId, effects);
         }
     }
 }

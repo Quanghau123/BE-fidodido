@@ -32,6 +32,9 @@ namespace FidoDino.Application.Services
         // Bắt đầu lượt chơi, trả về loại ice và số lần lắc cho user.
         public async Task<(IceResultDto ice, int shakeCount)> StartTurnAsync(Guid userId)
         {
+            // Cập nhật hiệu ứng timed khi bắt đầu lượt chơi
+            await _effectService.UpdateTimedEffectsOnStartTurnAsync(userId);
+
             var iceList = await _iceCache.GetAllIcesAsync();
             var ice = RandomIceByProbability(iceList);
 
