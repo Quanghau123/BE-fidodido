@@ -109,8 +109,6 @@ builder.Services.AddScoped<IDatabase>(sp =>
 // SignalR
 builder.Services.AddSignalR();
 
-// BackgroundService cập nhật BXH
-builder.Services.AddHostedService<FidoDino.API.BackgroundServices.LeaderboardUpdateService>();
 
 //Controllers & Validation
 builder.Services.AddControllers()
@@ -145,7 +143,18 @@ builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddSingleton<IAuthorizationHandler, PermissionHandler>();
 builder.Services.AddScoped<IAuthTokenService, AuthTokenService>();
 builder.Services.AddScoped<IGamePlayService, GamePlayService>();
-builder.Services.AddScoped<IGameSessionService, GameSessionService>();
+builder.Services.AddScoped<IGameSessionService, GameSessionService>(sp =>
+    new GameSessionService(
+        sp.GetRequiredService<IGameSessionRepository>(),
+        sp.GetRequiredService<IConnectionMultiplexer>(),
+        sp.GetRequiredService<IEffectService>(),
+        sp.GetRequiredService<ILeaderboardStateRepository>(),
+        sp.GetRequiredService<ILeaderboardRepository>(),
+        sp.GetRequiredService<IConfiguration>(),
+        sp.GetRequiredService<Microsoft.AspNetCore.SignalR.IHubContext<FidoDino.API.Hubs.LeaderboardHub>>(),
+        sp.GetRequiredService<ILeaderboardService>()
+    )
+);
 builder.Services.AddScoped<ILeaderboardService, LeaderboardService>();
 builder.Services.AddScoped<ILeaderboardAppService, LeaderboardAppService>();
 builder.Services.AddScoped<ISnapshotService, SnapshotService>();

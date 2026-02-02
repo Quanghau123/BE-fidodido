@@ -75,10 +75,6 @@ namespace FidoDino.Application.Services
             Console.WriteLine($"[DEBUG]  effectTypeName {effectTypeName} ");
             Console.WriteLine($"//////////////////////////////////////////////////");
             int earnedScore = rewardRedis.Score;
-            if (await _effectService.HasEffectAsync(userId, EffectType.DoubleScore))
-            {
-                earnedScore *= 2;
-            }
 
             var reward = new RewardResultDto
             {

@@ -61,12 +61,24 @@ namespace FidoDino.Application.Services
 
                 var (ice, shakeCount) = await _gamePlayService.StartTurnAsync(userId);
 
+                bool hasDoubleScore = await _effectService.HasEffectAsync(userId, EffectType.DoubleScore);
+
+                bool hasSpeedBoost = await _effectService.HasEffectAsync(userId, EffectType.SpeedBoost);
+
+                if (hasSpeedBoost)
+                {
+                    shakeCount = (int)Math.Ceiling(shakeCount * 0.5);
+                }
+
                 var turnCache = new TurnCacheDto
                 {
                     SessionId = sessionId,
                     IceId = ice.IceId,
                     ShakeCount = shakeCount,
-                    StartedAt = DateTime.UtcNow
+                    StartedAt = DateTime.UtcNow,
+
+                    DoubleScore = hasDoubleScore,
+                    SpeedBoost = hasSpeedBoost
                 };
 
                 await _redis.StringSetAsync(
@@ -99,8 +111,11 @@ namespace FidoDino.Application.Services
 
             var turn = JsonSerializer.Deserialize<TurnCacheDto>(turnJson!)!;
 
-            var (reward, earnedScore) =
-                await _gamePlayService.EndTurnAsync(userId, turn.IceId);
+            var (reward, earnedScore) = await _gamePlayService.EndTurnAsync(userId, turn.IceId);
+            if (turn.DoubleScore)
+            {
+                earnedScore *= 2;
+            }
 
             var now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
             var timeKey = LeaderboardTimeKeyHelper.GetTimeKey(_defaultTimeRange, now);
@@ -166,7 +181,7 @@ namespace FidoDino.Application.Services
                 if (effectType == EffectType.AutoBreakIce)
                 {
                     await _effectService.SetUtilityAsync(userId, 3);
-                    durationSeconds = 0; // Utility không có thời gian hiệu lực
+                    durationSeconds = 0;
                 }
                 else
                 {

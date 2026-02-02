@@ -6,5 +6,8 @@ namespace FidoDino.Application.DTOs.Game
         public Guid IceId { get; set; }
         public int ShakeCount { get; set; }
         public DateTime StartedAt { get; set; }
+
+        public bool DoubleScore { get; set; }
+        public bool SpeedBoost { get; set; }
     }
 }
