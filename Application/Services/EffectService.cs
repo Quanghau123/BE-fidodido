@@ -278,5 +278,78 @@ namespace FidoDino.Application.Services
             }
             await _cache.SaveTimedEffectsAsync(userId, effects);
         }
+
+        public async Task<StartTurnEffectResultDto> ApplyStartTurnEffectsAsync(Guid userId, int baseShakeCount)
+        {
+            var result = new StartTurnEffectResultDto
+            {
+                FinalShakeCount = baseShakeCount
+            };
+
+            if (await HasEffectAsync(userId, EffectType.SpeedBoost))
+            {
+                result.FinalShakeCount = (int)Math.Ceiling(baseShakeCount * 0.5);
+            }
+
+            result.DoubleScore = await HasEffectAsync(userId, EffectType.DoubleScore);
+
+            return result;
+        }
+
+        public Task<EndTurnEffectResultDto> ApplyEndTurnEffectsAsync(int baseScore, bool hadDoubleScore)
+        {
+            var finalScore = hadDoubleScore
+                ? baseScore * 2
+                : baseScore;
+
+            return Task.FromResult(new EndTurnEffectResultDto
+            {
+                FinalScore = finalScore
+            });
+        }
+
+
+        public async Task<RewardEffectResultDto> ApplyRewardEffectAsync(Guid userId, EffectType effectType)
+        {
+            if (effectType == EffectType.None)
+                return new RewardEffectResultDto();
+
+            if (effectType == EffectType.AutoBreakIce)
+            {
+                await SetUtilityAsync(userId, 3);
+                return new RewardEffectResultDto
+                {
+                    EffectType = effectType.ToString(),
+                    DurationSeconds = 0
+                };
+            }
+
+            await AddOrUpdateTimedEffectAsync(userId, effectType, 60);
+
+            int duration = 0;
+            int retry = 0;
+            const int maxRetry = 3;
+
+            while (retry < maxRetry)
+            {
+                try
+                {
+                    duration = await GetEffectDurationAsync(userId, effectType);
+                    break;
+                }
+                catch (NotFoundException)
+                {
+                    retry++;
+                    if (retry >= maxRetry) throw;
+                    await Task.Delay(50);
+                }
+            }
+
+            return new RewardEffectResultDto
+            {
+                EffectType = effectType.ToString(),
+                DurationSeconds = duration
+            };
+        }
     }
 }

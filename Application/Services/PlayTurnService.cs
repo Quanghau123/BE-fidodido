@@ -65,22 +65,16 @@ namespace FidoDino.Application.Services
 
                 var (ice, shakeCount) = await _gamePlayService.StartTurnAsync(userId);
 
-                bool hasDoubleScore = await _effectService.HasEffectAsync(userId, EffectType.DoubleScore);
-                bool hasSpeedBoost = await _effectService.HasEffectAsync(userId, EffectType.SpeedBoost);
-
-                if (hasSpeedBoost)
-                {
-                    shakeCount = (int)Math.Ceiling(shakeCount * 0.5);
-                }
+                var effectResult =
+                    await _effectService.ApplyStartTurnEffectsAsync(userId, shakeCount);
 
                 var turnCache = new TurnCacheDto
                 {
                     SessionId = sessionId,
                     IceId = ice.IceId,
-                    ShakeCount = shakeCount,
+                    ShakeCount = effectResult.FinalShakeCount,
                     StartedAt = DateTime.UtcNow,
-                    DoubleScore = hasDoubleScore,
-                    SpeedBoost = hasSpeedBoost
+                    DoubleScore = effectResult.DoubleScore
                 };
 
                 await _redis.StringSetAsync(
@@ -93,7 +87,7 @@ namespace FidoDino.Application.Services
                 {
                     IceId = ice.IceId,
                     IceType = ice.IceType.ToString(),
-                    ShakeCount = shakeCount
+                    ShakeCount = effectResult.FinalShakeCount
                 };
             }
             finally
@@ -121,11 +115,14 @@ namespace FidoDino.Application.Services
             Console.WriteLine($"[LOG][PlayTurnService] EndTurnAsync: userId={userId}, playDurationSeconds={playDurationSeconds}");
             await _effectService.UpdateTimedEffectsOnEndTurnAsync(userId, playDurationSeconds);
 
-            var (reward, earnedScore) = await _gamePlayService.EndTurnAsync(userId, turn.IceId);
-            if (turn.DoubleScore)
-            {
-                earnedScore *= 2;
-            }
+            var (reward, baseScore) = await _gamePlayService.EndTurnAsync(userId, turn.IceId);
+
+            var scoreResult =
+                await _effectService.ApplyEndTurnEffectsAsync(
+                    baseScore,
+                    turn.DoubleScore);
+
+            var earnedScore = scoreResult.FinalScore;
 
             var now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
             var timeKey = LeaderboardTimeKeyHelper.GetTimeKey(_defaultTimeRange, now);
@@ -182,41 +179,7 @@ namespace FidoDino.Application.Services
                 earnedScore);
 
             // Apply effect
-            int durationSeconds = 0;
-            string effectTypeName = EffectType.None.ToString();
-            var effectType = reward.EffectType;
-            if (effectType != EffectType.None)
-            {
-                effectTypeName = effectType.ToString();
-                if (effectType == EffectType.AutoBreakIce)
-                {
-                    await _effectService.SetUtilityAsync(userId, 3);
-                    durationSeconds = 0;
-                }
-                else
-                {
-                    // Cộng dồn thời gian cho timed effect (ví dụ: 60s)
-                    await _effectService.AddOrUpdateTimedEffectAsync(userId, effectType, 60);
-                    // lấy thời gian còn lại của effect, nhưng có cơ chế retry vì Redis có thể chưa kịp ghi xong
-                    int retry = 0; //số lần đã thử
-                    const int maxRetry = 3;
-                    const int delayMs = 50; //fail thì đợi 50ms
-                    while (retry < maxRetry)
-                    {
-                        try
-                        {
-                            durationSeconds = await _effectService.GetEffectDurationAsync(userId, effectType);
-                            break;
-                        }
-                        catch (NotFoundException)
-                        {
-                            retry++;
-                            if (retry >= maxRetry) throw;
-                            await Task.Delay(delayMs);
-                        }
-                    }
-                }
-            }
+            var rewardEffectResult = await _effectService.ApplyRewardEffectAsync(userId, reward.EffectType);
 
             await _redis.KeyDeleteAsync($"game:turn:active:{userId}");
 
@@ -228,8 +191,8 @@ namespace FidoDino.Application.Services
                 RewardId = reward.RewardId,
                 RewardName = reward.RewardName,
                 EarnedScore = earnedScore,
-                EffectType = effectTypeName,
-                DurationSeconds = durationSeconds,
+                EffectType = rewardEffectResult.EffectType,
+                DurationSeconds = rewardEffectResult.DurationSeconds,
             };
         }
 

@@ -19,5 +19,8 @@ namespace FidoDino.Application.Interfaces
         Task UpdateTimedEffectsOnEndTurnAsync(Guid userId, int playDurationSeconds);
         Task AddOrUpdateTimedEffectAsync(Guid userId, EffectType effectType, int secondsToAdd);
         Task<List<TimedEffectStateDto>> GetActiveTimedEffectsAsync(Guid userId);
+        Task<StartTurnEffectResultDto> ApplyStartTurnEffectsAsync(Guid userId, int baseShakeCount);
+        Task<EndTurnEffectResultDto> ApplyEndTurnEffectsAsync(int baseScore, bool hadDoubleScore);
+        Task<RewardEffectResultDto> ApplyRewardEffectAsync(Guid userId, EffectType effectType);
     }
 }
