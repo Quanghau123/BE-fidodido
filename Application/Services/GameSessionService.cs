@@ -10,6 +10,7 @@ using FidoDino.Domain.Interfaces.Leaderboard;
 using FidoDino.Common;
 using Microsoft.AspNetCore.SignalR;
 using FidoDino.API.Hubs;
+using FidoDino.Application.Events;
 
 namespace FidoDino.Application.Services
 {
@@ -21,10 +22,9 @@ namespace FidoDino.Application.Services
         private readonly ILeaderboardStateRepository _leaderboardStateRepo;
         private readonly ILeaderboardRepository _leaderboardRepo;
         private readonly TimeRangeType _defaultTimeRange;
-        private readonly IHubContext<LeaderboardHub> _hubContext;
-        private readonly ILeaderboardService _leaderboardService;
-
+        private readonly IEventBus _eventBus;
         private const int SESSION_CACHE_HOURS = 2;
+        private readonly int _topUsers;
 
         public GameSessionService(
             IGameSessionRepository sessionRepository,
@@ -33,8 +33,7 @@ namespace FidoDino.Application.Services
             ILeaderboardStateRepository leaderboardStateRepo,
             ILeaderboardRepository leaderboardRepo,
             IConfiguration configuration,
-            IHubContext<LeaderboardHub> hubContext,
-            ILeaderboardService leaderboardService)
+            IEventBus eventBus)
         {
             _sessionRepository = sessionRepository;
             _redis = redis.GetDatabase();
@@ -44,9 +43,10 @@ namespace FidoDino.Application.Services
             var configValue = configuration["Leaderboard:DefaultTimeRange"];
             if (!Enum.TryParse<TimeRangeType>(configValue, true, out var parsed))
                 parsed = TimeRangeType.Day;
+            if (!int.TryParse(configuration["Leaderboard:TopUsers"], out _topUsers))
+                _topUsers = 10;
             _defaultTimeRange = parsed;
-            _hubContext = hubContext;
-            _leaderboardService = leaderboardService;
+            _eventBus = eventBus;
         }
 
         // Lấy phiên chơi đang hoạt động của người dùng
@@ -187,9 +187,8 @@ namespace FidoDino.Application.Services
                 );
 
                 // Push realtime leaderboard update
-                var topUsers = 10; // hoặc lấy từ config nếu cần
-                var leaderboard = await _leaderboardService.GetTopAsync(state.TimeRange, date, topUsers);
-                await _hubContext.Clients.All.SendAsync("LeaderboardUpdated", leaderboard);
+                await _eventBus.PublishAsync(new LeaderboardUpdatedEvent(state.TimeRange, date, _topUsers));
+
             }
 
             // Clear Redis

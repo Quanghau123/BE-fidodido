@@ -216,18 +216,14 @@ namespace FidoDino.Application.Services
 
         public async Task UpdateTimedEffectsOnStartTurnAsync(Guid userId)
         {
-            Console.WriteLine($"[LOG][EffectService] UpdateTimedEffectsOnStartTurnAsync called for userId={userId}");
             var effects = await _cache.GetTimedEffectsAsync(userId);
-            Console.WriteLine($"[LOG][EffectService] Timed effects count: {effects.Count}");
             var now = DateTime.UtcNow;
             foreach (var effect in effects)
             {
                 if (effect.LastActiveAt.HasValue)
                 {
                     var elapsed = (int)(now - effect.LastActiveAt.Value).TotalSeconds;
-                    Console.WriteLine($"[LOG][StartTurn] Effect {effect.EffectType} elapsed: {elapsed}, before: {effect.RemainingSeconds}");
                     effect.RemainingSeconds = Math.Max(0, effect.RemainingSeconds - elapsed);
-                    Console.WriteLine($"[LOG][StartTurn] Effect {effect.EffectType} after: {effect.RemainingSeconds}");
                 }
                 effect.LastActiveAt = now;
             }
@@ -237,14 +233,11 @@ namespace FidoDino.Application.Services
         public async Task UpdateTimedEffectsOnEndTurnAsync(Guid userId, int playDurationSeconds)
         {
             var effects = await _cache.GetTimedEffectsAsync(userId);
-            Console.WriteLine($"[LOG][EndTurn] playDurationSeconds: {playDurationSeconds}");
             foreach (var effect in effects)
             {
                 if (effect.LastActiveAt.HasValue)
                 {
-                    Console.WriteLine($"[LOG][EndTurn] Effect {effect.EffectType} before: {effect.RemainingSeconds}");
                     effect.RemainingSeconds = Math.Max(0, effect.RemainingSeconds - playDurationSeconds);
-                    Console.WriteLine($"[LOG][EndTurn] Effect {effect.EffectType} after: {effect.RemainingSeconds}");
                 }
                 effect.LastActiveAt = null;
             }

@@ -4,6 +4,7 @@ using FidoDino.API.Middleware;
 using FidoDino.Application.Interfaces;
 using FidoDino.Infrastructure.Data;
 using FidoDino.Infrastructure.Data.Seeders;
+using FidoDino.Infrastructure.Realtime.Handlers;
 using SmtpEmailService = FidoDino.Application.Interfaces.SmtpEmailService;
 
 // Builder & Configuration
@@ -109,5 +110,12 @@ using (var scope = app.Services.CreateScope())
 
 // Hangfire recurring jobs
 app.UseLeaderboardSummaryJobs(builder.Configuration);
+
+// Register Realtime Handlers
+using (var scope = app.Services.CreateScope())
+{
+    var sp = scope.ServiceProvider;
+    RealtimeHandlerRegistration.RegisterHandlers(sp);
+}
 
 app.Run();

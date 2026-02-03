@@ -74,9 +74,7 @@ namespace FidoDino.Application.Services
                 if (effect != null)
                     effectTypeName = effect.EffectType.ToString();
             }
-            Console.WriteLine($"//////////////////////////////////////////////////");
-            Console.WriteLine($"[DEBUG]  effectTypeName {effectTypeName} ");
-            Console.WriteLine($"//////////////////////////////////////////////////");
+
             int earnedScore = rewardRedis.Score;
 
             var reward = new RewardResultDto

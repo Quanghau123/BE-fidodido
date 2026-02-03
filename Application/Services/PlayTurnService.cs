@@ -57,7 +57,6 @@ namespace FidoDino.Application.Services
                     throw new NotFoundException("No active session");
 
                 // Cập nhật hiệu ứng timed khi bắt đầu lượt chơi
-                Console.WriteLine($"[LOG][PlayTurnService] StartTurnAsync: userId={userId}");
                 await _effectService.UpdateTimedEffectsOnStartTurnAsync(userId);
 
                 if (await _effectService.HasEffectAsync(userId, EffectType.BlockPlay))
@@ -112,7 +111,6 @@ namespace FidoDino.Application.Services
             var playDurationSeconds = (int)(DateTime.UtcNow - turn.StartedAt).TotalSeconds;
 
             // Cập nhật hiệu ứng timed khi kết thúc lượt chơi
-            Console.WriteLine($"[LOG][PlayTurnService] EndTurnAsync: userId={userId}, playDurationSeconds={playDurationSeconds}");
             await _effectService.UpdateTimedEffectsOnEndTurnAsync(userId, playDurationSeconds);
 
             var (reward, baseScore) = await _gamePlayService.EndTurnAsync(userId, turn.IceId);

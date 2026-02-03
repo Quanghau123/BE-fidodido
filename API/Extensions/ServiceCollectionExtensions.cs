@@ -1,6 +1,9 @@
+using FidoDino.Application.Events;
 using FidoDino.Application.Interfaces;
 using FidoDino.Application.Services;
 using FidoDino.Common.Authorization;
+using FidoDino.Infrastructure.Realtime;
+using FidoDino.Infrastructure.Realtime.Handlers;
 using FidoDino.Infrastructure.Security;
 using Microsoft.AspNetCore.Authorization;
 
@@ -35,6 +38,11 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IStartupService, StartupService>();
         services.AddScoped<ISystemStatusAppService, SystemStatusAppService>();
 
+        // EventBus
+        services.AddSingleton<IEventBus, InMemoryEventBus>();
+
+        // handler realtime 
+        services.AddScoped<LeaderboardRealtimeHandler>();
         return services;
     }
 }
